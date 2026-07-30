@@ -3,9 +3,43 @@ import { Image } from 'astro:assets';
 import { getCollection } from 'astro:content';
 import logoWhite from '../assets/logo/obpc-logo-white.png';
 
-const igrejas = (await getCollection('igrejas')).sort((a, b) =>
-  a.data.nome.localeCompare(b.data.nome, 'pt-BR'),
-);
+/* Ordem do seed original (sede primeiro). Não é ordem alfabética. */
+const ORDEM_SEED = [
+  'sede',
+  'alto-guaianases',
+  'biritiba-mirim',
+  'botujuru',
+  'biritiba-ussu',
+  'bras-cubas',
+  'cesar-de-souza',
+  'chacara-guanabara',
+  'conjunto-cocuera',
+  'guararema',
+  'itapety',
+  'jardim-aeroporto-ii',
+  'jardim-lair',
+  'jardim-vieira',
+  'jardim-das-bandeiras',
+  'lucinda',
+  'franca',
+  'bolivia',
+  'parque-olimpico',
+  'rodeio',
+  'sabauna',
+  'salesopolis',
+  'varinhas',
+  'vila-moraes',
+  'vila-natal',
+  'vila-paulista',
+] as const;
+
+const igrejas = (await getCollection('igrejas'))
+  .sort((a, b) => {
+    const ia = ORDEM_SEED.indexOf(a.data.slug as (typeof ORDEM_SEED)[number]);
+    const ib = ORDEM_SEED.indexOf(b.data.slug as (typeof ORDEM_SEED)[number]);
+    return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
+  })
+  .slice(0, 8);
 
 const year = new Date().getFullYear();
 const whatsappUrl =
@@ -101,13 +135,13 @@ const socialLinks = [
       <h2 class="mb-[var(--space-md)] text-sm font-semibold uppercase tracking-wide text-[var(--color-accent)]">
         Nossas Igrejas
       </h2>
-      <ul class="max-h-64 space-y-[var(--space-xs)] overflow-y-auto text-sm text-white/85 pr-[var(--space-xs)]">
+      <ul class="space-y-[var(--space-xs)] text-sm text-white/85">
         {
           igrejas.map((igreja) => (
             <li>
               <a
                 href={`/relacao-das-igrejas-obpc/#${igreja.data.slug}`}
-                class="hover:text-[var(--color-accent)]"
+                class="footer-link hover:text-[var(--color-accent)]"
               >
                 {igreja.data.nome}
               </a>
@@ -115,6 +149,9 @@ const socialLinks = [
           ))
         }
       </ul>
+      <a href="/relacao-das-igrejas-obpc/" class="footer-link footer-link--see-all">
+        Ver todas as igrejas →
+      </a>
     </div>
 
     <div id="contato">
@@ -190,5 +227,18 @@ const socialLinks = [
     height: auto;
     max-height: 3rem;
     object-fit: contain;
+  }
+
+  .footer-link--see-all {
+    display: inline-block;
+    margin-top: var(--space-sm);
+    color: var(--color-accent);
+    font-size: 0.875rem;
+    font-weight: 500;
+    text-decoration: none;
+  }
+
+  .footer-link--see-all:hover {
+    text-decoration: underline;
   }
 </style>
