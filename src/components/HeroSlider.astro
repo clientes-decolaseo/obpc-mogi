@@ -162,7 +162,7 @@ const slides = [
     display: grid;
     align-items: end;
     min-width: 100%;
-    min-height: 92vh;
+    min-height: 96vh;
     scroll-snap-align: start;
     scroll-margin-top: 4.5rem;
     overflow: hidden;
@@ -193,15 +193,23 @@ const slides = [
   .hero-slide__content {
     position: relative;
     z-index: 2;
-    max-width: 42rem;
+    max-width: 46rem;
     padding: var(--space-2xl) var(--space-md) 7.5rem;
     color: var(--color-neutral-0);
   }
 
   @media (min-width: 768px) {
     .hero-slide__content {
-      padding-inline: max(var(--space-2xl), calc((100% - 72rem) / 2 + var(--space-md)));
+      /* Alinha à coluna de 72rem SEM comer a largura útil do max-width */
+      margin-inline-start: max(var(--space-2xl), calc((100% - 72rem) / 2 + var(--space-md)));
+      padding-inline: var(--space-md);
       padding-bottom: 8rem;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .hero-slide__content {
+      max-width: 60rem;
     }
   }
 
@@ -216,7 +224,6 @@ const slides = [
     letter-spacing: var(--tracking-tight);
     line-height: 1.05;
     color: var(--color-neutral-0);
-    text-wrap: balance;
   }
 
   .hero-slide__text {

@@ -2,17 +2,18 @@
 import { Image } from 'astro:assets';
 import { getCollection } from 'astro:content';
 import type { ImageMetadata } from 'astro';
-import junho from '../assets/comunicados/junho.jpg';
-import agosto from '../assets/comunicados/agosto.jpg';
-import novembro from '../assets/comunicados/novembro.jpg';
-import comunicadoEspecial from '../assets/comunicados/comunicado-especial.jpg';
 
-const imageMap: Record<string, ImageMetadata> = {
-  '/images/comunicados/junho.jpg': junho,
-  '/images/comunicados/agosto.jpg': agosto,
-  '/images/comunicados/novembro.jpg': novembro,
-  '/images/comunicados/comunicado-especial.jpg': comunicadoEspecial,
-};
+const imageModules = import.meta.glob<{ default: ImageMetadata }>(
+  '../assets/comunicados/*.{jpg,jpeg,png,webp}',
+  { eager: true },
+);
+
+const imageMap: Record<string, ImageMetadata> = {};
+for (const [filePath, mod] of Object.entries(imageModules)) {
+  const filename = filePath.split('/').pop();
+  if (!filename) continue;
+  imageMap[`/images/comunicados/${filename}`] = mod.default;
+}
 
 const comunicados = (await getCollection('comunicados')).sort(
   (a, b) => b.data.dataPublicacao.valueOf() - a.data.dataPublicacao.valueOf(),

@@ -1,0 +1,311 @@
+---
+export const prerender = false;
+
+import '../../styles/global.css';
+import { getSession } from '../../lib/auth';
+import { listComunicados } from '../../lib/cms-storage';
+
+const session = getSession(Astro.cookies);
+const comunicados = session ? await listComunicados() : [];
+---
+
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>Admin — OBPC Mogi</title>
+  </head>
+  <body class="admin-body">
+    {
+      !session ? (
+        <main class="admin-shell">
+          <h1 class="admin-title">Painel administrativo</h1>
+          <p class="admin-muted">Entre com suas credenciais para gerenciar comunicados.</p>
+          <form id="login-form" class="admin-card">
+            <label class="admin-label">
+              E-mail
+              <input type="email" name="email" required autocomplete="username" class="admin-input" />
+            </label>
+            <label class="admin-label">
+              Senha
+              <input type="password" name="password" required autocomplete="current-password" class="admin-input" />
+            </label>
+            <p id="login-error" class="admin-error" hidden></p>
+            <button type="submit" class="btn-pill btn-pill--primary">Entrar</button>
+          </form>
+        </main>
+      ) : (
+        <main class="admin-shell">
+          <header class="admin-header">
+            <div>
+              <p class="eyebrow">Área restrita</p>
+              <h1 class="admin-title">Comunicados</h1>
+              <p class="admin-muted">Logado como {session.email}</p>
+            </div>
+            <button type="button" id="logout-btn" class="btn-pill btn-pill--primary">Sair</button>
+          </header>
+
+          <section class="admin-card">
+            <h2 class="admin-subtitle">Publicar novo comunicado</h2>
+            <form id="create-form" class="admin-form">
+              <label class="admin-label">
+                Título
+                <input type="text" name="titulo" required class="admin-input" placeholder="Ex: Programação de Agosto" />
+              </label>
+              <label class="admin-label">
+                Data de publicação
+                <input type="date" name="dataPublicacao" required class="admin-input" />
+              </label>
+              <label class="admin-label">
+                Imagem (jpg, png ou webp — máx. 5MB)
+                <input
+                  type="file"
+                  name="imagem"
+                  accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp"
+                  required
+                  class="admin-input"
+                />
+              </label>
+              <p id="create-feedback" class="admin-feedback" hidden></p>
+              <button type="submit" class="btn-pill btn-pill--primary">Publicar</button>
+            </form>
+          </section>
+
+          <section class="admin-card">
+            <h2 class="admin-subtitle">Comunicados atuais</h2>
+            {
+              comunicados.length === 0 ? (
+                <p class="admin-muted">Nenhum comunicado cadastrado.</p>
+              ) : (
+                <ul class="admin-list">
+                  {comunicados.map((item) => (
+                    <li>
+                      <strong>{item.titulo}</strong>
+                      <span>{item.dataPublicacao}</span>
+                      <code>{item.arquivo}</code>
+                    </li>
+                  ))}
+                </ul>
+              )
+            }
+          </section>
+        </main>
+      )
+    }
+
+    <script is:inline>
+      const loginForm = document.getElementById('login-form');
+      if (loginForm) {
+        loginForm.addEventListener('submit', async (event) => {
+          event.preventDefault();
+          const form = event.currentTarget;
+          const data = new FormData(form);
+          const errorEl = document.getElementById('login-error');
+          if (errorEl) {
+            errorEl.hidden = true;
+            errorEl.textContent = '';
+          }
+
+          const res = await fetch('/api/admin/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              email: String(data.get('email') || ''),
+              password: String(data.get('password') || ''),
+            }),
+          });
+
+          if (!res.ok) {
+            const payload = await res.json().catch(function () {
+              return { error: 'Falha no login' };
+            });
+            if (errorEl) {
+              errorEl.hidden = false;
+              errorEl.textContent = payload.error || 'Credenciais inválidas';
+            }
+            return;
+          }
+
+          window.location.reload();
+        });
+      }
+
+      const logoutBtn = document.getElementById('logout-btn');
+      if (logoutBtn) {
+        logoutBtn.addEventListener('click', async function () {
+          await fetch('/api/admin/logout', { method: 'POST' });
+          window.location.reload();
+        });
+      }
+
+      const createForm = document.getElementById('create-form');
+      if (createForm) {
+        createForm.addEventListener('submit', async function (event) {
+          event.preventDefault();
+          const form = event.currentTarget;
+          const feedback = document.getElementById('create-feedback');
+          const formData = new FormData(form);
+
+          if (feedback) {
+            feedback.hidden = true;
+            feedback.textContent = '';
+            feedback.classList.remove('is-error', 'is-ok');
+          }
+
+          const res = await fetch('/api/admin/comunicados/create', {
+            method: 'POST',
+            body: formData,
+          });
+
+          const payload = await res.json().catch(function () {
+            return { error: 'Erro inesperado' };
+          });
+
+          if (!res.ok) {
+            if (feedback) {
+              feedback.hidden = false;
+              feedback.classList.add('is-error');
+              feedback.textContent = payload.error || 'Não foi possível publicar';
+            }
+            return;
+          }
+
+          if (feedback) {
+            feedback.hidden = false;
+            feedback.classList.add('is-ok');
+            feedback.textContent =
+              'Publicado: ' + ((payload.item && payload.item.arquivo) || 'ok') + '. Recarregando…';
+          }
+          form.reset();
+          window.setTimeout(function () {
+            window.location.reload();
+          }, 800);
+        });
+      }
+    </script>
+
+    <style>
+      .admin-body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: var(--font-body);
+        color: var(--color-neutral-900);
+        background: var(--color-surface);
+      }
+
+      .admin-shell {
+        max-width: 40rem;
+        margin: 0 auto;
+        padding: var(--space-2xl) var(--space-md);
+      }
+
+      .admin-header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: var(--space-md);
+        margin-bottom: var(--space-xl);
+      }
+
+      .admin-title {
+        margin: 0 0 var(--space-xs);
+        font-size: var(--text-h2);
+        font-weight: var(--weight-display);
+        letter-spacing: var(--tracking-tight);
+        color: var(--color-primary-dark);
+      }
+
+      .admin-subtitle {
+        margin: 0 0 var(--space-md);
+        font-size: var(--text-h3);
+        color: var(--color-primary);
+      }
+
+      .admin-muted {
+        margin: 0 0 var(--space-lg);
+        color: var(--color-neutral-700);
+      }
+
+      .admin-card {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-md);
+        margin-bottom: var(--space-lg);
+        padding: var(--space-lg);
+        background: var(--color-neutral-0);
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-sm);
+      }
+
+      .admin-form {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-md);
+      }
+
+      .admin-label {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-xs);
+        font-weight: var(--weight-medium);
+        font-size: 0.9375rem;
+      }
+
+      .admin-input {
+        padding: 0.75rem 0.875rem;
+        border: 1px solid var(--color-neutral-200);
+        border-radius: var(--radius-md);
+        font: inherit;
+      }
+
+      .admin-error {
+        margin: 0;
+        color: #b42318;
+        font-size: 0.9375rem;
+      }
+
+      .admin-feedback {
+        margin: 0;
+        font-size: 0.9375rem;
+      }
+
+      .admin-feedback.is-ok {
+        color: var(--color-secondary);
+      }
+
+      .admin-feedback.is-error {
+        color: #b42318;
+      }
+
+      .admin-list {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-sm);
+      }
+
+      .admin-list li {
+        display: grid;
+        gap: 0.15rem;
+        padding: var(--space-sm) 0;
+        border-bottom: 1px solid var(--color-neutral-200);
+      }
+
+      .admin-list span,
+      .admin-list code {
+        color: var(--color-neutral-700);
+        font-size: 0.875rem;
+      }
+
+      .btn-pill {
+        align-self: flex-start;
+        border: 0;
+        cursor: pointer;
+      }
+    </style>
+  </body>
+</html>
