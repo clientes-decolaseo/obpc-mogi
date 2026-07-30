@@ -8,8 +8,8 @@
     "preview": "astro preview"
   },
   "dependencies": {
-    "@astrojs/node": "^9.5.5",
     "@astrojs/sitemap": "^3.7.3",
+    "@astrojs/vercel": "^9.0.5",
     "@fontsource/inter": "^5.2.5",
     "astro": "^5.10.0",
     "bcryptjs": "^3.0.3",

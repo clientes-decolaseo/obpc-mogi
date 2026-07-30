@@ -1,5 +1,9 @@
 # build output
 dist/
+.vercel/
+
+# local scratch
+tmp-screenshots/
 
 # generated types
 .astro/
@@ -15,6 +19,8 @@ pnpm-debug.log*
 
 # env
 .env
+.env.*
+.env.local
 .env.production
 
 # macOS

@@ -3,10 +3,8 @@ export const prerender = false;
 
 import '../../styles/global.css';
 import { getSession } from '../../lib/auth';
-import { listComunicados } from '../../lib/cms-storage';
 
 const session = getSession(Astro.cookies);
-const comunicados = session ? await listComunicados() : [];
 ---
 
 <!doctype html>
@@ -37,7 +35,7 @@ const comunicados = session ? await listComunicados() : [];
           </form>
         </main>
       ) : (
-        <main class="admin-shell">
+        <main class="admin-shell admin-shell--wide">
           <header class="admin-header">
             <div>
               <p class="eyebrow">Área restrita</p>
@@ -48,7 +46,7 @@ const comunicados = session ? await listComunicados() : [];
           </header>
 
           <section class="admin-card">
-            <h2 class="admin-subtitle">Publicar novo comunicado</h2>
+            <h2 class="admin-subtitle">Novo comunicado</h2>
             <form id="create-form" class="admin-form">
               <label class="admin-label">
                 Título
@@ -75,22 +73,40 @@ const comunicados = session ? await listComunicados() : [];
 
           <section class="admin-card">
             <h2 class="admin-subtitle">Comunicados atuais</h2>
-            {
-              comunicados.length === 0 ? (
-                <p class="admin-muted">Nenhum comunicado cadastrado.</p>
-              ) : (
-                <ul class="admin-list">
-                  {comunicados.map((item) => (
-                    <li>
-                      <strong>{item.titulo}</strong>
-                      <span>{item.dataPublicacao}</span>
-                      <code>{item.arquivo}</code>
-                    </li>
-                  ))}
-                </ul>
-              )
-            }
+            <p id="list-loading" class="admin-muted">Carregando…</p>
+            <p id="list-empty" class="admin-muted" hidden>Nenhum comunicado cadastrado.</p>
+            <p id="list-error" class="admin-error" hidden></p>
+            <ul id="comunicados-list" class="admin-grid" hidden></ul>
           </section>
+
+          <dialog id="edit-dialog" class="admin-dialog">
+            <form id="edit-form" method="dialog" class="admin-form">
+              <h2 class="admin-subtitle">Editar comunicado</h2>
+              <input type="hidden" name="slug" />
+              <label class="admin-label">
+                Título
+                <input type="text" name="titulo" required class="admin-input" />
+              </label>
+              <label class="admin-label">
+                Data de publicação
+                <input type="date" name="dataPublicacao" required class="admin-input" />
+              </label>
+              <label class="admin-label">
+                Nova imagem (opcional)
+                <input
+                  type="file"
+                  name="imagem"
+                  accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp"
+                  class="admin-input"
+                />
+              </label>
+              <p id="edit-feedback" class="admin-feedback" hidden></p>
+              <div class="admin-dialog__actions">
+                <button type="button" id="edit-cancel" class="admin-btn-ghost">Cancelar</button>
+                <button type="submit" class="btn-pill btn-pill--primary">Salvar</button>
+              </div>
+            </form>
+          </dialog>
         </main>
       )
     }
@@ -140,6 +156,79 @@ const comunicados = session ? await listComunicados() : [];
         });
       }
 
+      function formatDatePt(iso) {
+        const parts = String(iso).slice(0, 10).split('-');
+        if (parts.length !== 3) return iso;
+        const d = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+        return d.toLocaleDateString('pt-BR');
+      }
+
+      function previewUrl(slug) {
+        return '/api/admin/comunicados/preview?slug=' + encodeURIComponent(slug);
+      }
+
+      async function loadList() {
+        const loading = document.getElementById('list-loading');
+        const empty = document.getElementById('list-empty');
+        const errorEl = document.getElementById('list-error');
+        const list = document.getElementById('comunicados-list');
+        if (!list) return;
+
+        if (loading) loading.hidden = false;
+        if (empty) empty.hidden = true;
+        if (errorEl) {
+          errorEl.hidden = true;
+          errorEl.textContent = '';
+        }
+        list.hidden = true;
+        list.innerHTML = '';
+
+        try {
+          const res = await fetch('/api/admin/comunicados/list');
+          const payload = await res.json();
+          if (!res.ok) throw new Error(payload.error || 'Falha ao carregar');
+
+          const items = payload.items || [];
+          if (loading) loading.hidden = true;
+
+          if (items.length === 0) {
+            if (empty) empty.hidden = false;
+            return;
+          }
+
+          list.hidden = false;
+          items.forEach(function (item) {
+            const li = document.createElement('li');
+            li.className = 'admin-item';
+            li.dataset.slug = item.slug;
+            li.dataset.titulo = item.titulo;
+            li.dataset.data = item.dataPublicacao;
+
+            li.innerHTML =
+              '<img class="admin-item__thumb" width="120" height="120" alt="" src="' +
+              previewUrl(item.slug) +
+              '" />' +
+              '<div class="admin-item__body">' +
+              '<strong class="admin-item__title"></strong>' +
+              '<span class="admin-item__date"></span>' +
+              '<div class="admin-item__actions">' +
+              '<button type="button" class="admin-btn-ghost js-edit">Editar</button>' +
+              '<button type="button" class="admin-btn-danger js-delete">Excluir</button>' +
+              '</div></div>';
+
+            li.querySelector('.admin-item__title').textContent = item.titulo;
+            li.querySelector('.admin-item__date').textContent = formatDatePt(item.dataPublicacao);
+            list.appendChild(li);
+          });
+        } catch (err) {
+          if (loading) loading.hidden = true;
+          if (errorEl) {
+            errorEl.hidden = false;
+            errorEl.textContent = err.message || 'Erro ao carregar lista';
+          }
+        }
+      }
+
       const createForm = document.getElementById('create-form');
       if (createForm) {
         createForm.addEventListener('submit', async function (event) {
@@ -158,7 +247,6 @@ const comunicados = session ? await listComunicados() : [];
             method: 'POST',
             body: formData,
           });
-
           const payload = await res.json().catch(function () {
             return { error: 'Erro inesperado' };
           });
@@ -175,14 +263,105 @@ const comunicados = session ? await listComunicados() : [];
           if (feedback) {
             feedback.hidden = false;
             feedback.classList.add('is-ok');
-            feedback.textContent =
-              'Publicado: ' + ((payload.item && payload.item.arquivo) || 'ok') + '. Recarregando…';
+            feedback.textContent = 'Publicado com sucesso.';
           }
           form.reset();
-          window.setTimeout(function () {
-            window.location.reload();
-          }, 800);
+          loadList();
         });
+      }
+
+      const editDialog = document.getElementById('edit-dialog');
+      const editForm = document.getElementById('edit-form');
+      const editCancel = document.getElementById('edit-cancel');
+
+      editCancel?.addEventListener('click', function () {
+        editDialog?.close();
+      });
+
+      document.getElementById('comunicados-list')?.addEventListener('click', async function (event) {
+        const target = event.target;
+        if (!(target instanceof HTMLElement)) return;
+        const item = target.closest('.admin-item');
+        if (!item) return;
+        const slug = item.dataset.slug;
+        const titulo = item.dataset.titulo;
+        const data = item.dataset.data;
+
+        if (target.classList.contains('js-edit')) {
+          if (!editForm || !editDialog) return;
+          editForm.slug.value = slug;
+          editForm.titulo.value = titulo;
+          editForm.dataPublicacao.value = String(data).slice(0, 10);
+          editForm.imagem.value = '';
+          const feedback = document.getElementById('edit-feedback');
+          if (feedback) {
+            feedback.hidden = true;
+            feedback.textContent = '';
+            feedback.classList.remove('is-error', 'is-ok');
+          }
+          editDialog.showModal();
+          return;
+        }
+
+        if (target.classList.contains('js-delete')) {
+          const ok = window.confirm('Excluir o comunicado "' + titulo + '"? Esta ação não pode ser desfeita.');
+          if (!ok) return;
+
+          const res = await fetch('/api/admin/comunicados/delete', {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ slug: slug }),
+          });
+          const payload = await res.json().catch(function () {
+            return { error: 'Erro ao excluir' };
+          });
+          if (!res.ok) {
+            window.alert(payload.error || 'Não foi possível excluir');
+            return;
+          }
+          loadList();
+        }
+      });
+
+      editForm?.addEventListener('submit', async function (event) {
+        event.preventDefault();
+        const form = event.currentTarget;
+        const feedback = document.getElementById('edit-feedback');
+        const formData = new FormData(form);
+        const file = formData.get('imagem');
+        if (!(file instanceof File) || file.size === 0) {
+          formData.delete('imagem');
+        }
+
+        if (feedback) {
+          feedback.hidden = true;
+          feedback.textContent = '';
+          feedback.classList.remove('is-error', 'is-ok');
+        }
+
+        const res = await fetch('/api/admin/comunicados/update', {
+          method: 'PUT',
+          body: formData,
+        });
+        const payload = await res.json().catch(function () {
+          return { error: 'Erro ao salvar' };
+        });
+
+        if (!res.ok) {
+          if (feedback) {
+            feedback.hidden = false;
+            feedback.classList.add('is-error');
+            feedback.textContent = payload.error || 'Não foi possível salvar';
+          }
+          return;
+        }
+
+        editDialog?.close();
+        loadList();
+      });
+
+      if (document.getElementById('comunicados-list')) {
+        loadList();
       }
     </script>
 
@@ -199,6 +378,10 @@ const comunicados = session ? await listComunicados() : [];
         max-width: 40rem;
         margin: 0 auto;
         padding: var(--space-2xl) var(--space-md);
+      }
+
+      .admin-shell--wide {
+        max-width: 56rem;
       }
 
       .admin-header {
@@ -279,26 +462,100 @@ const comunicados = session ? await listComunicados() : [];
         color: #b42318;
       }
 
-      .admin-list {
+      .admin-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: var(--space-md);
         margin: 0;
         padding: 0;
         list-style: none;
+      }
+
+      @media (min-width: 640px) {
+        .admin-grid {
+          grid-template-columns: repeat(2, 1fr);
+        }
+      }
+
+      .admin-item {
+        display: flex;
+        gap: var(--space-md);
+        padding: var(--space-md);
+        border: 1px solid var(--color-neutral-200);
+        border-radius: var(--radius-lg);
+        background: var(--color-neutral-0);
+      }
+
+      .admin-item__thumb {
+        width: 120px;
+        height: 120px;
+        object-fit: cover;
+        border-radius: var(--radius-md);
+        flex-shrink: 0;
+        background: var(--color-neutral-100);
+      }
+
+      .admin-item__body {
         display: flex;
         flex-direction: column;
-        gap: var(--space-sm);
+        gap: var(--space-xs);
+        min-width: 0;
       }
 
-      .admin-list li {
-        display: grid;
-        gap: 0.15rem;
-        padding: var(--space-sm) 0;
-        border-bottom: 1px solid var(--color-neutral-200);
+      .admin-item__title {
+        color: var(--color-primary-dark);
+        font-size: 1rem;
       }
 
-      .admin-list span,
-      .admin-list code {
+      .admin-item__date {
         color: var(--color-neutral-700);
         font-size: 0.875rem;
+      }
+
+      .admin-item__actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--space-sm);
+        margin-top: auto;
+      }
+
+      .admin-btn-ghost,
+      .admin-btn-danger {
+        padding: 0.4rem 0.75rem;
+        border-radius: var(--radius-md);
+        border: 1px solid var(--color-neutral-200);
+        background: transparent;
+        font: inherit;
+        font-size: 0.875rem;
+        font-weight: var(--weight-medium);
+        cursor: pointer;
+      }
+
+      .admin-btn-ghost {
+        color: var(--color-primary);
+      }
+
+      .admin-btn-danger {
+        color: #b42318;
+        border-color: #f3c1bc;
+      }
+
+      .admin-dialog {
+        width: min(28rem, calc(100vw - 2rem));
+        border: 0;
+        border-radius: var(--radius-lg);
+        padding: var(--space-lg);
+        box-shadow: var(--shadow-md);
+      }
+
+      .admin-dialog::backdrop {
+        background: rgb(15 38 71 / 0.55);
+      }
+
+      .admin-dialog__actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: var(--space-sm);
       }
 
       .btn-pill {

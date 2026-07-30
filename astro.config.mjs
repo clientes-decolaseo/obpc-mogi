@@ -1,13 +1,13 @@
 import { defineConfig } from 'astro/config';
 import sitemap from '@astrojs/sitemap';
-import node from '@astrojs/node';
+import vercel from '@astrojs/vercel';
 import tailwindcss from '@tailwindcss/vite';
 
 // https://astro.build/config
 export default defineConfig({
   site: 'https://obpcmogi.com.br',
   output: 'static',
-  adapter: node({ mode: 'standalone' }),
+  adapter: vercel(),
   build: {
     inlineStylesheets: 'always',
   },

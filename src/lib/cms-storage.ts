@@ -2,7 +2,7 @@
 // GitHub Contents API — a assinatura das funções deve continuar igual para não quebrar
 // as rotas de API que as usam.
 
-import { readdir, readFile, writeFile, mkdir } from 'node:fs/promises';
+import { readdir, readFile, writeFile, mkdir, unlink } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -25,6 +25,19 @@ export type CreateComunicadoInput = {
   imageExt: string;
 };
 
+export type UpdateComunicadoInput = {
+  titulo: string;
+  dataPublicacao: string;
+  imageBuffer?: Buffer;
+  imageExt?: string;
+};
+
+type ComunicadoJson = {
+  titulo: string;
+  imagem: string;
+  dataPublicacao: string;
+};
+
 function slugify(text: string): string {
   return text
     .normalize('NFD')
@@ -33,6 +46,10 @@ function slugify(text: string): string {
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '')
     .replace(/-{2,}/g, '-');
+}
+
+function filenameFromImagemPath(imagem: string): string {
+  return imagem.split('/').pop() || '';
 }
 
 async function uniqueSlug(base: string): Promise<string> {
@@ -50,6 +67,11 @@ async function uniqueSlug(base: string): Promise<string> {
   }
 }
 
+async function readComunicadoJson(slug: string): Promise<ComunicadoJson> {
+  const raw = await readFile(path.join(contentDir, `${slug}.json`), 'utf8');
+  return JSON.parse(raw) as ComunicadoJson;
+}
+
 export async function listComunicados(): Promise<ComunicadoListItem[]> {
   await mkdir(contentDir, { recursive: true });
   const files = (await readdir(contentDir)).filter((f) => f.endsWith('.json'));
@@ -57,11 +79,7 @@ export async function listComunicados(): Promise<ComunicadoListItem[]> {
   const items: ComunicadoListItem[] = [];
   for (const arquivo of files) {
     const raw = await readFile(path.join(contentDir, arquivo), 'utf8');
-    const data = JSON.parse(raw) as {
-      titulo: string;
-      imagem: string;
-      dataPublicacao: string;
-    };
+    const data = JSON.parse(raw) as ComunicadoJson;
     items.push({
       slug: arquivo.replace(/\.json$/, ''),
       titulo: data.titulo,
@@ -92,7 +110,7 @@ export async function createComunicado({
 
   await writeFile(path.join(assetsDir, imageFilename), imageBuffer);
 
-  const json = {
+  const json: ComunicadoJson = {
     titulo,
     imagem: imagemPath,
     dataPublicacao,
@@ -106,4 +124,99 @@ export async function createComunicado({
     imagem: imagemPath,
     arquivo: `${slug}.json`,
   };
+}
+
+export async function updateComunicado(
+  slug: string,
+  dados: UpdateComunicadoInput,
+): Promise<ComunicadoListItem> {
+  await mkdir(contentDir, { recursive: true });
+  await mkdir(assetsDir, { recursive: true });
+
+  const jsonPath = path.join(contentDir, `${slug}.json`);
+  let current: ComunicadoJson;
+  try {
+    current = await readComunicadoJson(slug);
+  } catch {
+    throw new Error('Comunicado não encontrado');
+  }
+
+  let imagemPath = current.imagem;
+
+  if (dados.imageBuffer && dados.imageExt) {
+    const ext = dados.imageExt.replace(/^\./, '').toLowerCase();
+    const oldFilename = filenameFromImagemPath(current.imagem);
+    const newFilename = `${slug}.${ext}`;
+    const newPath = path.join(assetsDir, newFilename);
+
+    await writeFile(newPath, dados.imageBuffer);
+
+    if (oldFilename && oldFilename !== newFilename) {
+      try {
+        await unlink(path.join(assetsDir, oldFilename));
+      } catch {
+        // arquivo antigo pode não existir
+      }
+    }
+
+    imagemPath = `/images/comunicados/${newFilename}`;
+  }
+
+  const json: ComunicadoJson = {
+    titulo: dados.titulo,
+    imagem: imagemPath,
+    dataPublicacao: dados.dataPublicacao,
+  };
+  await writeFile(jsonPath, `${JSON.stringify(json, null, 2)}\n`, 'utf8');
+
+  return {
+    slug,
+    titulo: json.titulo,
+    dataPublicacao: json.dataPublicacao,
+    imagem: json.imagem,
+    arquivo: `${slug}.json`,
+  };
+}
+
+export async function deleteComunicado(slug: string): Promise<void> {
+  const jsonPath = path.join(contentDir, `${slug}.json`);
+  let current: ComunicadoJson;
+  try {
+    current = await readComunicadoJson(slug);
+  } catch {
+    throw new Error('Comunicado não encontrado');
+  }
+
+  const filename = filenameFromImagemPath(current.imagem);
+  await unlink(jsonPath);
+
+  if (filename) {
+    try {
+      await unlink(path.join(assetsDir, filename));
+    } catch {
+      // imagem pode já ter sido removida
+    }
+  }
+}
+
+/** Lê o arquivo de imagem de um comunicado (para preview no admin). */
+export async function readComunicadoImage(
+  slug: string,
+): Promise<{ buffer: Buffer; ext: string; contentType: string } | null> {
+  try {
+    const current = await readComunicadoJson(slug);
+    const filename = filenameFromImagemPath(current.imagem);
+    if (!filename) return null;
+    const buffer = await readFile(path.join(assetsDir, filename));
+    const ext = filename.split('.').pop()?.toLowerCase() || 'jpg';
+    const contentType =
+      ext === 'png'
+        ? 'image/png'
+        : ext === 'webp'
+          ? 'image/webp'
+          : 'image/jpeg';
+    return { buffer, ext, contentType };
+  } catch {
+    return null;
+  }
 }
