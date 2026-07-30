@@ -1,0 +1,187 @@
+---
+import { getCollection } from 'astro:content';
+import type { ImageMetadata } from 'astro';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import IgrejaCard from '../../components/IgrejaCard.astro';
+
+/* Ordem do array de seed original (sede primeiro). Não é ordem alfabética. */
+const ORDEM_SEED = [
+  'sede',
+  'alto-guaianases',
+  'biritiba-mirim',
+  'botujuru',
+  'biritiba-ussu',
+  'bras-cubas',
+  'cesar-de-souza',
+  'chacara-guanabara',
+  'conjunto-cocuera',
+  'guararema',
+  'itapety',
+  'jardim-aeroporto-ii',
+  'jardim-lair',
+  'jardim-vieira',
+  'jardim-das-bandeiras',
+  'lucinda',
+  'franca',
+  'bolivia',
+  'parque-olimpico',
+  'rodeio',
+  'sabauna',
+  'salesopolis',
+  'varinhas',
+  'vila-moraes',
+  'vila-natal',
+  'vila-paulista',
+] as const;
+
+const imageModules = import.meta.glob<{ default: ImageMetadata }>(
+  '../../assets/igrejas/*.{png,jpg,jpeg,webp}',
+  { eager: true },
+);
+
+const imageBySlug: Record<string, ImageMetadata> = {};
+for (const [path, mod] of Object.entries(imageModules)) {
+  const slug = path.split('/').pop()?.replace(/\.(png|jpe?g|webp)$/i, '');
+  if (slug) imageBySlug[slug] = mod.default;
+}
+
+const igrejas = (await getCollection('igrejas')).sort((a, b) => {
+  const ia = ORDEM_SEED.indexOf(a.data.slug as (typeof ORDEM_SEED)[number]);
+  const ib = ORDEM_SEED.indexOf(b.data.slug as (typeof ORDEM_SEED)[number]);
+  return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
+});
+
+const itemListLd = {
+  '@context': 'https://schema.org',
+  '@type': 'ItemList',
+  name: 'Relação das Igrejas OBPC Mogi das Cruzes',
+  numberOfItems: igrejas.length,
+  itemListElement: igrejas.map((igreja, index) => ({
+    '@type': 'ListItem',
+    position: index + 1,
+    name: igreja.data.nome,
+    url: new URL(
+      `/relacao-das-igrejas-obpc/#${igreja.data.slug}`,
+      Astro.site,
+    ).href,
+  })),
+};
+---
+
+<BaseLayout
+  title="Relação das Igrejas OBPC - OBPC Mogi das Cruzes"
+  description="Confira o endereço, dirigente e contato de todas as igrejas O Brasil Para Cristo em Mogi das Cruzes e região."
+>
+  <script is:inline type="application/ld+json" set:html={JSON.stringify(itemListLd)} />
+
+  <section class="igrejas-page" aria-labelledby="igrejas-page-title">
+    <div class="igrejas-page__inner">
+      <header class="igrejas-page__header">
+        <p class="eyebrow">Nossas igrejas</p>
+        <h1 id="igrejas-page-title" class="section-heading">
+          Relação de nossas Igrejas OBPC
+        </h1>
+      </header>
+
+      <nav class="igrejas-page__index" aria-label="Índice de igrejas">
+        <ul>
+          {
+            igrejas.map((igreja) => (
+              <li>
+                <a href={`#${igreja.data.slug}`}>{igreja.data.nome}</a>
+              </li>
+            ))
+          }
+        </ul>
+      </nav>
+
+      <ul class="igrejas-page__grid">
+        {
+          igrejas.map((igreja) => {
+            const imagem = imageBySlug[igreja.data.slug];
+            if (!imagem) return null;
+
+            return (
+              <li>
+                <IgrejaCard igreja={igreja} imagem={imagem} />
+              </li>
+            );
+          })
+        }
+      </ul>
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .igrejas-page {
+    padding: var(--space-2xl) var(--space-md);
+    background: var(--color-surface);
+  }
+
+  .igrejas-page__inner {
+    max-width: 72rem;
+    margin-inline: auto;
+  }
+
+  .igrejas-page__header {
+    margin-bottom: var(--space-xl);
+    text-align: center;
+  }
+
+  .igrejas-page__header :global(.section-heading) {
+    margin-inline: auto;
+  }
+
+  .igrejas-page__index {
+    margin-bottom: var(--space-2xl);
+    padding: var(--space-lg);
+    border-radius: var(--radius-lg);
+    background: var(--color-neutral-0);
+    box-shadow: var(--shadow-sm);
+  }
+
+  .igrejas-page__index ul {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: var(--space-xs) var(--space-md);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  @media (min-width: 640px) {
+    .igrejas-page__index ul {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .igrejas-page__index ul {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+
+  .igrejas-page__index a {
+    display: block;
+    padding: var(--space-xs) 0;
+    color: var(--color-primary);
+    font-size: 0.95rem;
+    text-decoration: none;
+  }
+
+  .igrejas-page__index a:hover,
+  .igrejas-page__index a:focus-visible {
+    color: var(--color-secondary);
+    text-decoration: underline;
+  }
+
+  .igrejas-page__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: var(--space-md);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+</style>

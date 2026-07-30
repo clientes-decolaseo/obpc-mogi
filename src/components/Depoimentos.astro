@@ -1,0 +1,99 @@
+---
+import { Image } from 'astro:assets';
+import dep01 from '../assets/depoimentos/dep-01.png';
+import dep02 from '../assets/depoimentos/dep-02.png';
+import dep03 from '../assets/depoimentos/dep-03.png';
+
+/*
+  TODO: substituir por depoimentos reais (texto ou áudio) — imagens atuais do site original
+  parecem ser prints de mensagens, considerar formato mais acessível (texto direto)
+  na atualização de conteúdo
+*/
+
+const depoimentos = [
+  { src: dep01, alt: 'Depoimento de membro da OBPC — 1' },
+  { src: dep02, alt: 'Depoimento de membro da OBPC — 2' },
+  { src: dep03, alt: 'Depoimento de membro da OBPC — 3' },
+];
+---
+
+<section class="depoimentos" aria-labelledby="depoimentos-title">
+  <div class="depoimentos__inner">
+    <header class="depoimentos__header">
+      <p class="eyebrow">Comunidade</p>
+      <h2 id="depoimentos-title" class="section-heading">Membros O Brasil para Cristo</h2>
+      <p class="depoimentos__subtitle">Veja o que alguns de nossos membros falam sobre a OBPC</p>
+    </header>
+
+    <ul class="depoimentos__grid">
+      {
+        depoimentos.map((dep) => (
+          <li>
+            <Image
+              src={dep.src}
+              alt={dep.alt}
+              width={768}
+              height={165}
+              format="webp"
+              quality="mid"
+              loading="lazy"
+              class="depoimentos__image"
+            />
+          </li>
+        ))
+      }
+    </ul>
+  </div>
+</section>
+
+<style>
+  .depoimentos {
+    padding: var(--space-2xl) var(--space-md);
+    background: var(--color-surface);
+  }
+
+  .depoimentos__inner {
+    max-width: 72rem;
+    margin-inline: auto;
+  }
+
+  .depoimentos__header {
+    margin-bottom: var(--space-xl);
+    text-align: center;
+  }
+
+  .depoimentos__header :global(.section-heading) {
+    margin-inline: auto;
+    margin-bottom: var(--space-sm);
+  }
+
+  .depoimentos__subtitle {
+    margin: 0;
+    color: var(--color-neutral-700);
+    font-size: 1.05rem;
+  }
+
+  .depoimentos__grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: var(--space-md);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  @media (min-width: 1024px) {
+    .depoimentos__grid {
+      grid-template-columns: repeat(3, 1fr);
+      gap: var(--space-lg);
+    }
+  }
+
+  .depoimentos__image {
+    display: block;
+    width: 100%;
+    height: auto;
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-sm);
+  }
+</style>

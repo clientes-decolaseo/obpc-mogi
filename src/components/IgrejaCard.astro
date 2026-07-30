@@ -1,0 +1,228 @@
+---
+import { Image } from 'astro:assets';
+import type { CollectionEntry } from 'astro:content';
+import type { ImageMetadata } from 'astro';
+
+interface Props {
+  igreja: CollectionEntry<'igrejas'>;
+  imagem: ImageMetadata;
+}
+
+const { igreja, imagem } = Astro.props;
+const {
+  slug,
+  nome,
+  dirigente,
+  facebook,
+  email,
+  telefoneWhatsapp,
+  endereco,
+  cep,
+  mapaUrl,
+} = igreja.data;
+
+const enderecoCompleto = cep ? `${endereco}, CEP: ${cep}` : endereco;
+const whatsappUrl = telefoneWhatsapp
+  ? `https://api.whatsapp.com/send?phone=${telefoneWhatsapp}`
+  : null;
+
+const facebookPath =
+  'M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z';
+---
+
+<div class="igreja-entry">
+  <article class="campus-card campus-card--compact" id={slug}>
+    <Image
+      src={imagem}
+      alt={`Foto da ${nome}`}
+      width={280}
+      height={350}
+      format="webp"
+      quality="mid"
+      loading="lazy"
+      densities={[1]}
+    />
+    <div class="campus-card__label">
+      <p class="campus-card__name">{nome}</p>
+      <p class="campus-card__meta">{dirigente}</p>
+    </div>
+  </article>
+
+  <details class="igreja-entry__details">
+    <summary>Ver contato e endereço</summary>
+    <div class="igreja-entry__content">
+      {
+        (facebook || email || whatsappUrl) && (
+          <div class="igreja-entry__contacts">
+            {facebook && (
+              <a
+                href={facebook}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={`Facebook de ${nome}`}
+                class="igreja-entry__icon-link"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true">
+                  <path d={facebookPath} />
+                </svg>
+              </a>
+            )}
+            {email && (
+              <a href={`mailto:${email}`} class="igreja-entry__email">
+                {email}
+              </a>
+            )}
+            {whatsappUrl && (
+              <a
+                href={whatsappUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                class="igreja-entry__whatsapp"
+              >
+                Falar no WhatsApp
+              </a>
+            )}
+          </div>
+        )
+      }
+
+      <p class="igreja-entry__endereco">
+        <span>Endereço:</span> {enderecoCompleto}
+      </p>
+
+      <a
+        href={mapaUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        class="igreja-entry__mapa"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true">
+          <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5z" />
+        </svg>
+        Ver no mapa
+      </a>
+    </div>
+  </details>
+</div>
+
+<style>
+  .igreja-entry {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
+    height: 100%;
+  }
+
+  .igreja-entry :global(.campus-card) {
+    scroll-margin-top: 5rem;
+  }
+
+  .igreja-entry :global(.campus-card__meta) {
+    margin: 0.25rem 0 0;
+    opacity: 0.85;
+    font-size: 0.875rem;
+  }
+
+  .igreja-entry__details {
+    padding: var(--space-sm) var(--space-xs) 0;
+  }
+
+  .igreja-entry__details summary {
+    cursor: pointer;
+    color: var(--color-primary);
+    font-weight: var(--weight-bold);
+    font-size: 0.9375rem;
+    list-style: none;
+  }
+
+  .igreja-entry__details summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .igreja-entry__details summary::before {
+    content: '+ ';
+    color: var(--color-secondary);
+  }
+
+  .igreja-entry__details[open] summary::before {
+    content: '− ';
+  }
+
+  .igreja-entry__content {
+    margin-top: var(--space-sm);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
+  }
+
+  .igreja-entry__contacts {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-sm);
+  }
+
+  .igreja-entry__icon-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 9999px;
+    color: var(--color-primary);
+    background: var(--color-neutral-100);
+    transition: background-color 0.2s ease, color 0.2s ease;
+  }
+
+  .igreja-entry__icon-link:hover,
+  .igreja-entry__icon-link:focus-visible {
+    background: var(--color-primary);
+    color: var(--color-neutral-0);
+  }
+
+  .igreja-entry__email {
+    color: var(--color-primary-light);
+    font-size: 0.875rem;
+    word-break: break-all;
+  }
+
+  .igreja-entry__whatsapp {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.4rem 0.75rem;
+    border-radius: var(--radius-md);
+    background: #0f7a38;
+    color: var(--color-neutral-0);
+    font-size: 0.875rem;
+    font-weight: 600;
+    text-decoration: none;
+  }
+
+  .igreja-entry__endereco {
+    margin: 0;
+    color: var(--color-neutral-700);
+    font-size: 0.9rem;
+    line-height: 1.5;
+  }
+
+  .igreja-entry__endereco span {
+    font-weight: 600;
+    color: var(--color-neutral-900);
+  }
+
+  .igreja-entry__mapa {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-xs);
+    color: var(--color-secondary);
+    font-weight: 600;
+    font-size: 0.95rem;
+    text-decoration: none;
+  }
+
+  .igreja-entry__mapa:hover,
+  .igreja-entry__mapa:focus-visible {
+    color: var(--color-secondary-dark);
+  }
+</style>

@@ -1,0 +1,154 @@
+---
+import { Image } from 'astro:assets';
+import { getCollection } from 'astro:content';
+import type { ImageMetadata } from 'astro';
+import junho from '../assets/comunicados/junho.jpg';
+import agosto from '../assets/comunicados/agosto.jpg';
+import novembro from '../assets/comunicados/novembro.jpg';
+import comunicadoEspecial from '../assets/comunicados/comunicado-especial.jpg';
+
+const imageMap: Record<string, ImageMetadata> = {
+  '/images/comunicados/junho.jpg': junho,
+  '/images/comunicados/agosto.jpg': agosto,
+  '/images/comunicados/novembro.jpg': novembro,
+  '/images/comunicados/comunicado-especial.jpg': comunicadoEspecial,
+};
+
+const comunicados = (await getCollection('comunicados')).sort(
+  (a, b) => b.data.dataPublicacao.valueOf() - a.data.dataPublicacao.valueOf(),
+);
+---
+
+<section id="comunicados" class="comunicados" aria-labelledby="comunicados-title">
+  <div class="comunicados__inner">
+    <header class="comunicados__header">
+      <p class="eyebrow">Fique por dentro</p>
+      <h2 id="comunicados-title" class="section-heading">Comunicados Importantes</h2>
+      <p class="comunicados__subtitle">Fique atentos a todas as nossas datas especiais</p>
+    </header>
+
+    <ul class="comunicados__grid">
+      {
+        comunicados.map((item) => {
+          const src = imageMap[item.data.imagem];
+          if (!src) return null;
+
+          return (
+            <li>
+              <article class="comunicado-card">
+                <Image
+                  src={src}
+                  alt={`Cartaz: ${item.data.titulo}`}
+                  width={475}
+                  height={594}
+                  format="webp"
+                  quality="mid"
+                  loading="lazy"
+                  densities={[1]}
+                  class="comunicado-card__image"
+                />
+                <h3 class="comunicado-card__title">{item.data.titulo}</h3>
+              </article>
+            </li>
+          );
+        })
+      }
+    </ul>
+  </div>
+</section>
+
+<style>
+  .comunicados {
+    padding: var(--space-2xl) var(--space-md);
+    background: var(--color-neutral-0);
+  }
+
+  .comunicados__inner {
+    max-width: 72rem;
+    margin-inline: auto;
+  }
+
+  .comunicados__header {
+    margin-bottom: var(--space-xl);
+    text-align: center;
+  }
+
+  .comunicados__header :global(.section-heading) {
+    margin-inline: auto;
+    margin-bottom: var(--space-sm);
+  }
+
+  .comunicados__subtitle {
+    margin: 0;
+    color: var(--color-neutral-700);
+    font-size: 1.05rem;
+  }
+
+  .comunicados__grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: var(--space-lg);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  @media (min-width: 640px) {
+    .comunicados__grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .comunicados__grid {
+      grid-template-columns: repeat(4, 1fr);
+    }
+  }
+
+  .comunicado-card {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    overflow: hidden;
+    background: var(--color-neutral-0);
+    transition:
+      transform 0.2s ease,
+      box-shadow 0.2s ease;
+  }
+
+  .comunicado-card:hover,
+  .comunicado-card:focus-within {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-md);
+  }
+
+  .comunicado-card__image {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 475 / 594;
+    object-fit: cover;
+    border-radius: 0;
+  }
+
+  .comunicado-card__title {
+    margin: 0;
+    padding: 0 var(--space-sm) var(--space-sm);
+    color: var(--color-neutral-900);
+    font-size: 1rem;
+    font-weight: 600;
+    text-align: center;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .comunicado-card {
+      transition: none;
+    }
+
+    .comunicado-card:hover,
+    .comunicado-card:focus-within {
+      transform: none;
+    }
+  }
+</style>

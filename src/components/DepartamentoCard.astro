@@ -1,0 +1,115 @@
+---
+import { Image } from 'astro:assets';
+import type { CollectionEntry } from 'astro:content';
+import type { ImageMetadata } from 'astro';
+
+interface Props {
+  departamento: CollectionEntry<'departamentos'>;
+  imagem: ImageMetadata;
+}
+
+const { departamento, imagem } = Astro.props;
+const { nome, descricaoCurta, descricaoCompleta, lideranca } = departamento.data;
+
+const paragrafos = descricaoCompleta
+  .split(/\n{2,}/)
+  .map((p) => p.trim())
+  .filter(Boolean);
+---
+
+<article class="departamento-entry">
+  <div class="campus-card campus-card--compact">
+    <Image
+      src={imagem}
+      alt={`Logo do departamento ${nome}`}
+      width={280}
+      height={350}
+      format="webp"
+      quality="mid"
+      loading="lazy"
+      densities={[1]}
+    />
+    <div class="campus-card__label">
+      <p class="campus-card__name">{nome}</p>
+      <p class="campus-card__meta">{descricaoCurta}</p>
+    </div>
+  </div>
+
+  <details class="departamento-entry__details">
+    <summary>O que faz este departamento?</summary>
+    <div class="departamento-entry__content">
+      {paragrafos.map((paragrafo) => <p>{paragrafo}</p>)}
+      <p class="departamento-entry__lideranca">
+        <span>Liderança:</span>
+        {lideranca}
+      </p>
+    </div>
+  </details>
+</article>
+
+<style>
+  .departamento-entry {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
+    height: 100%;
+  }
+
+  .departamento-entry :global(.campus-card__meta) {
+    margin: 0.25rem 0 0;
+    opacity: 0.85;
+    font-size: 0.875rem;
+  }
+
+  .departamento-entry__details {
+    padding: var(--space-sm) var(--space-xs) 0;
+  }
+
+  .departamento-entry__details summary {
+    cursor: pointer;
+    color: var(--color-primary);
+    font-weight: var(--weight-bold);
+    font-size: 0.9375rem;
+    list-style: none;
+  }
+
+  .departamento-entry__details summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .departamento-entry__details summary::before {
+    content: '+ ';
+    color: var(--color-secondary);
+  }
+
+  .departamento-entry__details[open] summary::before {
+    content: '− ';
+  }
+
+  .departamento-entry__content {
+    margin-top: var(--space-sm);
+    color: var(--color-neutral-700);
+    font-size: 0.95rem;
+    line-height: 1.6;
+  }
+
+  .departamento-entry__content p {
+    margin: 0 0 var(--space-sm);
+  }
+
+  .departamento-entry__content p:last-child {
+    margin-bottom: 0;
+  }
+
+  .departamento-entry__lideranca {
+    margin-top: var(--space-md) !important;
+    padding-top: var(--space-sm);
+    border-top: 1px solid var(--color-neutral-200);
+    color: var(--color-neutral-900);
+  }
+
+  .departamento-entry__lideranca span {
+    color: var(--color-secondary);
+    font-weight: 700;
+  }
+</style>

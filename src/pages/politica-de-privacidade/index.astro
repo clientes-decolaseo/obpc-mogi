@@ -1,0 +1,138 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+
+const atualizadoEm = new Date().toLocaleDateString('pt-BR', {
+  day: 'numeric',
+  month: 'long',
+  year: 'numeric',
+});
+---
+
+<BaseLayout
+  title="Política de Privacidade - OBPC Mogi das Cruzes"
+  description="Saiba como a OBPC Mogi das Cruzes trata dados e cookies em conformidade com a LGPD."
+>
+  <article class="politica">
+    <div class="politica__inner">
+      <h1>Política de Privacidade</h1>
+
+      <p>
+        A Igreja OBPC Mogi das Cruzes preza pela privacidade de quem visita este site.
+        Este documento explica, em linguagem simples, como tratamos dados e cookies,
+        em conformidade com a Lei Geral de Proteção de Dados (LGPD — Lei nº 13.709/2018).
+      </p>
+
+      <section aria-labelledby="dados-title">
+        <h2 id="dados-title">Quais dados coletamos</h2>
+        <p>
+          Este é um site institucional e estático. Não há formulários que coletem
+          dados pessoais diretamente em nossas páginas. Quando você deseja falar
+          conosco, o contato acontece por WhatsApp ou e-mail — canais de
+          responsabilidade das respectivas plataformas (Meta/WhatsApp e do
+          provedor de e-mail). Nós não armazenamos, neste site, os conteúdos
+          dessas conversas.
+        </p>
+      </section>
+
+      <section aria-labelledby="cookies-title">
+        <h2 id="cookies-title">Cookies</h2>
+        <p>
+          Usamos cookies estritamente necessários ao funcionamento do site — por
+          exemplo, para lembrar se você já aceitou o aviso de cookies
+          (preferência de consentimento). Esses cookies não têm finalidade
+          publicitária.
+        </p>
+        <p>
+          Se no futuro adicionarmos ferramentas como Google Analytics ou Google
+          Tag Manager, isso será declarado nesta política antes de serem
+          ativadas, e pediremos o consentimento adequado quando for o caso.
+        </p>
+      </section>
+
+      <section aria-labelledby="direitos-title">
+        <h2 id="direitos-title">Seus direitos como titular de dados</h2>
+        <p>De acordo com a LGPD, você pode, entre outros:</p>
+        <ul>
+          <li>Confirmar se tratamos dados pessoais seus</li>
+          <li>Acessar os dados que tivermos a seu respeito</li>
+          <li>Corrigir dados incompletos, inexatos ou desatualizados</li>
+          <li>Solicitar a portabilidade dos dados, quando aplicável</li>
+          <li>Pedir a eliminação de dados desnecessários ou excessivos</li>
+          <li>Obter informação sobre o compartilhamento de dados com terceiros</li>
+        </ul>
+        <p>
+          Para exercer esses direitos em relação a este site, use o canal de
+          contato abaixo.
+        </p>
+      </section>
+
+      <section aria-labelledby="contato-title">
+        <h2 id="contato-title">Contato</h2>
+        <p>
+          Dúvidas sobre esta política? Escreva para
+          <a href="mailto:regional@obpcmogi.com.br">regional@obpcmogi.com.br</a>.
+        </p>
+      </section>
+
+      <p class="politica__atualizacao">
+        Última atualização: {atualizadoEm}
+      </p>
+    </div>
+  </article>
+</BaseLayout>
+
+<style>
+  .politica {
+    padding: var(--space-2xl) var(--space-md);
+    background: var(--color-neutral-0);
+  }
+
+  .politica__inner {
+    max-width: 42rem;
+    margin-inline: auto;
+  }
+
+  .politica h1 {
+    margin: 0 0 var(--space-lg);
+    color: var(--color-primary);
+    font-size: clamp(1.75rem, 3vw, 2.25rem);
+  }
+
+  .politica h2 {
+    margin: var(--space-xl) 0 var(--space-md);
+    color: var(--color-primary-dark);
+    font-size: 1.25rem;
+  }
+
+  .politica p,
+  .politica li {
+    color: var(--color-neutral-700);
+    line-height: 1.7;
+  }
+
+  .politica p {
+    margin: 0 0 var(--space-md);
+  }
+
+  .politica ul {
+    margin: 0 0 var(--space-md);
+    padding-left: 1.25rem;
+  }
+
+  .politica li {
+    margin-bottom: var(--space-xs);
+  }
+
+  .politica a {
+    color: var(--color-secondary);
+    font-weight: 600;
+  }
+
+  .politica__atualizacao {
+    margin-top: var(--space-xl);
+    padding-top: var(--space-md);
+    border-top: 1px solid var(--color-neutral-200);
+    color: var(--color-neutral-500);
+    font-size: 0.9rem;
+  }
+</style>

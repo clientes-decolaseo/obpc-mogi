@@ -1,0 +1,359 @@
+---
+import { Image } from 'astro:assets';
+import fachada from '../assets/hero/fachada.png';
+import slide2 from '../assets/hero/slide-2.png';
+import slide3 from '../assets/hero/slide-3.png';
+
+const slides = [
+  {
+    id: 'home',
+    eyebrow: 'Igreja O Brasil para Cristo',
+    title: 'OBPC – Igreja o Brasil para Cristo',
+    text: 'A Igreja Evangélica Pentecostal O Brasil para Cristo é uma denominação pentecostal fundada em 1955 e está presente em vários bairros da cidade de Mogi das Cruzes. Veja a relação completa de nossas igrejas.',
+    ctaLabel: 'Relação das Igrejas',
+    ctaHref: '/relacao-das-igrejas-obpc/',
+    image: fachada,
+    imageAlt: 'Fachada da sede da Igreja O Brasil para Cristo em Mogi das Cruzes',
+    /* Proporção de EXIBIÇÃO do hero (~16:9), não a da foto original */
+    imageWidth: 1600,
+    imageHeight: 900,
+    prev: 'departamentos-preview',
+    next: 'agenda-preview',
+  },
+  {
+    id: 'agenda-preview',
+    eyebrow: 'Agenda Anual',
+    title: 'Agenda Anual',
+    text: 'Confira nossa agenda anual e fique por dentro de todos os acontecimentos da OBPC Mogi das Cruzes.',
+    ctaLabel: 'Agenda Anual',
+    ctaHref: '/#agenda',
+    image: slide2,
+    imageAlt: '',
+    imageWidth: 1600,
+    imageHeight: 900,
+    prev: 'home',
+    next: 'departamentos-preview',
+  },
+  {
+    id: 'departamentos-preview',
+    eyebrow: 'Departamentos',
+    title: 'Departamentos Regionais',
+    text: 'Você participa de algum grupo sede da sua região? Então conheça nossos grupos e faça parte desta obra.',
+    ctaLabel: 'Departamentos',
+    ctaHref: '/#departamentos',
+    image: slide3,
+    imageAlt: '',
+    imageWidth: 1600,
+    imageHeight: 900,
+    prev: 'agenda-preview',
+    next: 'home',
+  },
+];
+---
+
+<div class="hero-block">
+  <section class="hero-slider" aria-label="Destaques">
+    <div class="hero-track">
+      {
+        slides.map((slide, index) => (
+          <article id={slide.id} class="hero-slide">
+            <Image
+              src={slide.image}
+              alt={slide.imageAlt}
+              width={slide.imageWidth}
+              height={slide.imageHeight}
+              fit="cover"
+              format="webp"
+              quality="mid"
+              loading={index === 0 ? 'eager' : 'lazy'}
+              fetchpriority={index === 0 ? 'high' : 'auto'}
+              densities={[1]}
+              class="hero-slide__image"
+            />
+            <div class="hero-slide__overlay" aria-hidden="true"></div>
+
+            <div class="hero-slide__content">
+              <p class="eyebrow hero-slide__eyebrow">{slide.eyebrow}</p>
+              {index === 0 ? (
+                <h1 class="hero-slide__title">{slide.title}</h1>
+              ) : (
+                <h2 class="hero-slide__title">{slide.title}</h2>
+              )}
+              <p class="hero-slide__text">{slide.text}</p>
+              <a href={slide.ctaHref} class="btn-pill btn-pill--primary">
+                {slide.ctaLabel}
+              </a>
+            </div>
+
+            <a
+              href={`#${slide.prev}`}
+              class="hero-arrow hero-arrow--prev"
+              aria-label={`Slide anterior: ir para ${slide.prev}`}
+            >
+              <span aria-hidden="true">‹</span>
+            </a>
+            <a
+              href={`#${slide.next}`}
+              class="hero-arrow hero-arrow--next"
+              aria-label={`Próximo slide: ir para ${slide.next}`}
+            >
+              <span aria-hidden="true">›</span>
+            </a>
+          </article>
+        ))
+      }
+    </div>
+
+    <nav class="hero-dots" aria-label="Navegação dos slides">
+      {
+        slides.map((slide) => (
+          <a href={`#${slide.id}`} class="hero-dot" aria-label={`Ir para o slide ${slide.title}`}>
+            <span class="sr-only">{slide.title}</span>
+          </a>
+        ))
+      }
+    </nav>
+  </section>
+
+  <aside class="hero-bridge" aria-label="Encontre sua igreja">
+    <div class="hero-bridge__inner">
+      <div class="hero-bridge__copy">
+        <p class="eyebrow">Nossas igrejas</p>
+        <p class="hero-bridge__title">Encontre sua igreja mais próxima</p>
+        <p class="hero-bridge__text">
+          A OBPC está presente em vários bairros de Mogi das Cruzes e região. Veja a relação completa e venha nos
+          visitar.
+        </p>
+      </div>
+      <a href="/relacao-das-igrejas-obpc/" class="btn-pill btn-pill--primary">
+        Ver igrejas
+      </a>
+    </div>
+  </aside>
+</div>
+
+<style>
+  .hero-block {
+    position: relative;
+    isolation: isolate;
+  }
+
+  .hero-slider {
+    position: relative;
+    z-index: 0;
+  }
+
+  .hero-track {
+    display: flex;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scroll-behavior: smooth;
+    scroll-padding-top: 4.5rem;
+    scrollbar-width: none;
+  }
+
+  .hero-track::-webkit-scrollbar {
+    display: none;
+  }
+
+  .hero-slide {
+    position: relative;
+    isolation: isolate;
+    display: grid;
+    align-items: end;
+    min-width: 100%;
+    min-height: 92vh;
+    scroll-snap-align: start;
+    scroll-margin-top: 4.5rem;
+    overflow: hidden;
+  }
+
+  .hero-slide__image {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center 35%;
+  }
+
+  .hero-slide__overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    background: linear-gradient(
+      to top,
+      rgba(15, 38, 71, 0.9) 0%,
+      rgba(15, 38, 71, 0.3) 50%,
+      rgba(15, 38, 71, 0.5) 100%
+    );
+  }
+
+  .hero-slide__content {
+    position: relative;
+    z-index: 2;
+    max-width: 42rem;
+    padding: var(--space-2xl) var(--space-md) 7.5rem;
+    color: var(--color-neutral-0);
+  }
+
+  @media (min-width: 768px) {
+    .hero-slide__content {
+      padding-inline: max(var(--space-2xl), calc((100% - 72rem) / 2 + var(--space-md)));
+      padding-bottom: 8rem;
+    }
+  }
+
+  .hero-slide__eyebrow {
+    color: var(--color-accent);
+  }
+
+  .hero-slide__title {
+    margin: 0 0 var(--space-md);
+    font-size: var(--text-display);
+    font-weight: var(--weight-display);
+    letter-spacing: var(--tracking-tight);
+    line-height: 1.05;
+    color: var(--color-neutral-0);
+    text-wrap: balance;
+  }
+
+  .hero-slide__text {
+    margin: 0 0 var(--space-lg);
+    max-width: 36rem;
+    font-size: clamp(1rem, 2vw, 1.125rem);
+    line-height: 1.6;
+    color: rgb(255 255 255 / 0.95);
+  }
+
+  .hero-slide__content :global(.btn-pill) {
+    text-decoration: none;
+  }
+
+  .hero-arrow {
+    position: absolute;
+    top: 50%;
+    z-index: 3;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    border-radius: 9999px;
+    background: rgb(0 0 0 / 0.4);
+    color: var(--color-neutral-0);
+    font-size: 1.75rem;
+    line-height: 1;
+    text-decoration: none;
+    transform: translateY(-50%);
+    transition: background-color 0.2s ease;
+  }
+
+  .hero-arrow:hover,
+  .hero-arrow:focus-visible {
+    background: rgb(0 0 0 / 0.65);
+  }
+
+  .hero-arrow--prev {
+    left: var(--space-sm);
+  }
+
+  .hero-arrow--next {
+    right: var(--space-sm);
+  }
+
+  .hero-dots {
+    position: absolute;
+    left: 50%;
+    bottom: calc(var(--space-md) + 4.5rem);
+    z-index: 3;
+    display: flex;
+    gap: 0;
+    transform: translateX(-50%);
+  }
+
+  .hero-dot {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    color: rgb(255 255 255 / 0.45);
+    background: transparent;
+    border-radius: 0;
+    transition:
+      color 0.2s ease,
+      transform 0.2s ease;
+  }
+
+  .hero-dot::before {
+    content: '';
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: currentColor;
+  }
+
+  .hero-dot:hover,
+  .hero-dot:focus-visible {
+    color: var(--color-neutral-0);
+    background: transparent;
+    transform: scale(1.08);
+  }
+
+  .hero-bridge {
+    position: relative;
+    z-index: 4;
+    margin-top: -5rem;
+    padding-inline: var(--space-md);
+    padding-bottom: var(--space-xl);
+  }
+
+  .hero-bridge__inner {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-lg);
+    align-items: flex-start;
+    max-width: 72rem;
+    margin-inline: auto;
+    padding: var(--space-xl) var(--space-lg);
+    background: var(--color-neutral-0);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-md);
+  }
+
+  @media (min-width: 768px) {
+    .hero-bridge {
+      margin-top: -5.5rem;
+    }
+
+    .hero-bridge__inner {
+      flex-direction: row;
+      align-items: center;
+      justify-content: space-between;
+      padding: var(--space-xl) var(--space-2xl);
+    }
+  }
+
+  .hero-bridge__title {
+    margin: 0 0 var(--space-sm);
+    font-size: var(--text-h3);
+    font-weight: var(--weight-bold);
+    letter-spacing: var(--tracking-tight);
+    color: var(--color-primary-dark);
+    line-height: 1.2;
+  }
+
+  .hero-bridge__text {
+    margin: 0;
+    max-width: 42rem;
+    color: var(--color-neutral-700);
+    line-height: 1.6;
+  }
+
+  .hero-bridge :global(.btn-pill) {
+    text-decoration: none;
+    flex-shrink: 0;
+  }
+</style>

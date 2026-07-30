@@ -1,0 +1,98 @@
+---
+import '../styles/global.css';
+import interLatin600 from '@fontsource/inter/files/inter-latin-600-normal.woff2';
+import interLatin700 from '@fontsource/inter/files/inter-latin-700-normal.woff2';
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+import WhatsAppFloat from '../components/WhatsAppFloat.astro';
+import CookieConsent from '../components/CookieConsent.astro';
+
+interface Props {
+  title: string;
+  description: string;
+  ogImage?: string;
+}
+
+const { title, description, ogImage } = Astro.props;
+
+const ogImageUrl = new URL(ogImage ?? '/images/og-default.jpg', Astro.site).href;
+
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'Church',
+  name: 'Igreja O Brasil para Cristo - Mogi das Cruzes',
+  address: {
+    '@type': 'PostalAddress',
+    streetAddress: 'Rua Marechal Floriano Peixoto, 55',
+    addressLocality: 'Mogi das Cruzes',
+    addressRegion: 'SP',
+    postalCode: '08715-210',
+    addressCountry: 'BR',
+  },
+  telephone: '+5511916656614',
+  sameAs: [
+    'https://www.facebook.com/O-Brasil-para-Cristo-Regional-107214001083133',
+    'https://www.instagram.com/obpcmogi/',
+  ],
+  url: 'https://obpcmogi.com.br',
+  foundingDate: '1955',
+};
+---
+
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+
+    <link rel="canonical" href={Astro.url} />
+    <link rel="sitemap" href="/sitemap-index.xml" />
+
+    {/*
+      Preload dos pesos acima da dobra:
+      - 700: H1 do Hero (font-weight: 700)
+      - 600: nav do Header (font-medium → 500/600) e CTAs
+      Inter 400 continua via CSS, sem preload (não é crítica no primeiro paint tipográfico do hero)
+    */}
+    <link
+      rel="preload"
+      href={interLatin600}
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+    <link
+      rel="preload"
+      href={interLatin700}
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:image" content={ogImageUrl} />
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="pt_BR" />
+    <meta property="og:site_name" content="OBPC Mogi das Cruzes" />
+    <meta property="og:url" content={Astro.url} />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={ogImageUrl} />
+
+    <script is:inline type="application/ld+json" set:html={JSON.stringify(jsonLd)} />
+  </head>
+  <body class="min-h-screen flex flex-col">
+    <Header />
+    <main class="flex-1">
+      <slot />
+    </main>
+    <Footer />
+    <WhatsAppFloat />
+    <CookieConsent />
+  </body>
+</html>

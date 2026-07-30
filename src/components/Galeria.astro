@@ -1,0 +1,191 @@
+---
+import { Image } from 'astro:assets';
+import type { ImageMetadata } from 'astro';
+
+const modules = import.meta.glob<{ default: ImageMetadata }>(
+  '../assets/galeria/galeria-*.{png,jpg,jpeg,webp}',
+  { eager: true },
+);
+
+const fotos = Object.entries(modules)
+  .map(([path, mod]) => {
+    const match = path.match(/galeria-(\d+)\./);
+    const n = match ? Number(match[1]) : 0;
+    return { n, src: mod.default };
+  })
+  .filter((f) => f.n > 0)
+  .sort((a, b) => a.n - b.n);
+---
+
+<section id="galeria" class="galeria" aria-labelledby="galeria-title">
+  <div class="galeria__inner">
+    <header class="galeria__header">
+      <p class="eyebrow">Memórias</p>
+      <h2 id="galeria-title" class="section-heading">Galeria de fotos</h2>
+      <p class="galeria__subtitle">Nossa igreja reunida para louvar o Senhor</p>
+    </header>
+
+    <ul class="galeria__grid">
+      {
+        fotos.map((foto) => (
+          <li>
+            <a
+              href={`#foto-${foto.n}`}
+              class="campus-card campus-card--gallery"
+              aria-label={`Abrir foto ${foto.n} em tamanho maior`}
+            >
+              <Image
+                src={foto.src}
+                alt={`Foto ${foto.n} da galeria OBPC Mogi`}
+                width={480}
+                height={480}
+                format="webp"
+                quality="mid"
+                loading="lazy"
+                densities={[1]}
+              />
+            </a>
+          </li>
+        ))
+      }
+    </ul>
+  </div>
+
+  {
+    fotos.map((foto) => (
+      <div id={`foto-${foto.n}`} class="lightbox-item" role="dialog" aria-label={`Foto ${foto.n}`}>
+        <a href="#galeria" class="lightbox-close" aria-label="Fechar foto">
+          <span aria-hidden="true">×</span>
+        </a>
+        <Image
+          src={foto.src}
+          alt={`Foto ${foto.n} da galeria OBPC Mogi em tamanho ampliado`}
+          width={900}
+          height={600}
+          format="webp"
+          quality="mid"
+          loading="lazy"
+          densities={[1]}
+          class="lightbox-image"
+        />
+      </div>
+    ))
+  }
+</section>
+
+<style>
+  .galeria {
+    scroll-margin-top: 4.5rem;
+    padding: var(--space-2xl) var(--space-md);
+    background: var(--color-neutral-0);
+  }
+
+  .galeria__inner {
+    max-width: 72rem;
+    margin-inline: auto;
+  }
+
+  .galeria__header {
+    margin-bottom: var(--space-xl);
+    text-align: center;
+  }
+
+  .galeria__header :global(.section-heading) {
+    margin-inline: auto;
+    margin-bottom: var(--space-sm);
+  }
+
+  .galeria__subtitle {
+    margin: 0;
+    color: var(--color-neutral-700);
+    font-size: 1.05rem;
+  }
+
+  .galeria__grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--space-sm);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  @media (min-width: 640px) {
+    .galeria__grid {
+      grid-template-columns: repeat(3, 1fr);
+      gap: var(--space-md);
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .galeria__grid {
+      grid-template-columns: repeat(4, 1fr);
+    }
+  }
+
+  .galeria__grid :global(.campus-card--gallery) {
+    display: block;
+    text-decoration: none;
+  }
+
+  /*
+    Fora da viewport quando inativo — evita que loading="lazy" seja ignorado
+    (position:fixed + inset:0 fazia a caixa intersectar 100% da tela mesmo com opacity:0).
+  */
+  .lightbox-item {
+    position: fixed;
+    top: -9999px;
+    left: -9999px;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-lg);
+    background: rgba(0, 0, 0, 0.88);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+  }
+
+  .lightbox-item:target {
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .lightbox-image {
+    max-width: min(92vw, 56rem);
+    max-height: 85vh;
+    width: auto;
+    height: auto;
+    border-radius: var(--radius-md);
+    object-fit: contain;
+    box-shadow: var(--shadow-md);
+  }
+
+  .lightbox-close {
+    position: absolute;
+    top: var(--space-md);
+    right: var(--space-md);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    border-radius: 9999px;
+    background: rgb(255 255 255 / 0.15);
+    color: var(--color-neutral-0);
+    font-size: 1.75rem;
+    line-height: 1;
+    text-decoration: none;
+    transition: background-color 0.2s ease;
+  }
+
+  .lightbox-close:hover,
+  .lightbox-close:focus-visible {
+    background: rgb(255 255 255 / 0.3);
+  }
+</style>

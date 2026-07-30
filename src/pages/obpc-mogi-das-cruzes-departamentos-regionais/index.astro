@@ -1,0 +1,39 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+---
+
+<BaseLayout
+  title="Departamentos Regionais | OBPC Mogi das Cruzes"
+  description="Página dos departamentos regionais da OBPC Mogi das Cruzes — em construção."
+>
+  <section class="em-construcao">
+    <h1>Departamentos Regionais</h1>
+    <p>Em construção</p>
+    <a href="/#departamentos">Voltar aos departamentos</a>
+  </section>
+</BaseLayout>
+
+<style>
+  .em-construcao {
+    max-width: 40rem;
+    margin: 0 auto;
+    padding: var(--space-2xl) var(--space-md);
+    text-align: center;
+  }
+
+  .em-construcao h1 {
+    margin: 0 0 var(--space-md);
+    color: var(--color-primary);
+  }
+
+  .em-construcao p {
+    margin: 0 0 var(--space-lg);
+    color: var(--color-neutral-700);
+    font-size: 1.125rem;
+  }
+
+  .em-construcao a {
+    color: var(--color-secondary);
+    font-weight: 600;
+  }
+</style>
