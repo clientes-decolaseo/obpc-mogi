@@ -74,11 +74,24 @@ const departamentos = (await getCollection('departamentos')).sort(
 
   .departamentos__grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-    gap: var(--space-md);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-sm);
     margin: 0;
     padding: 0;
     list-style: none;
+  }
+
+  @media (min-width: 640px) {
+    .departamentos__grid {
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: var(--space-md);
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .departamentos__grid {
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    }
   }
 
   .departamentos__cta-wrap {

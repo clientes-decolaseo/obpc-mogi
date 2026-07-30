@@ -168,6 +168,21 @@ h6 {
   aspect-ratio: 4 / 5;
 }
 
+@media (max-width: 639px) {
+  .campus-card--compact {
+    aspect-ratio: 3 / 4;
+  }
+
+  .campus-card--compact .campus-card__label {
+    padding: var(--space-sm);
+  }
+
+  .campus-card--compact .campus-card__name {
+    font-size: 0.95rem;
+    line-height: 1.2;
+  }
+}
+
 .btn-pill {
   display: inline-flex;
   align-items: center;

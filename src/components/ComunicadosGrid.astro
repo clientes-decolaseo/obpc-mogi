@@ -87,8 +87,8 @@ const comunicados = (await getCollection('comunicados')).sort(
 
   .comunicados__grid {
     display: grid;
-    grid-template-columns: 1fr;
-    gap: var(--space-lg);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-sm);
     margin: 0;
     padding: 0;
     list-style: none;
@@ -97,6 +97,7 @@ const comunicados = (await getCollection('comunicados')).sort(
   @media (min-width: 640px) {
     .comunicados__grid {
       grid-template-columns: repeat(2, 1fr);
+      gap: var(--space-lg);
     }
   }
 
