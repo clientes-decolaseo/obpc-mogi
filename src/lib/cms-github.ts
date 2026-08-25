@@ -29,6 +29,8 @@ const GALERIA_DIR = 'src/assets/galeria';
 const GALERIA_META = 'src/content/galeria-meta.json';
 const DEPT_CONTENT_DIR = 'src/content/departamentos';
 const DEPT_ASSETS_DIR = 'src/assets/departamentos';
+const IGREJA_CONTENT_DIR = 'src/content/igrejas';
+const IGREJA_ASSETS_DIR = 'src/assets/igrejas';
 const UA = 'obpcmogi-cms';
 const GALERIA_IMAGE_EXT = /\.(jpe?g|png|webp)$/i;
 
@@ -697,6 +699,308 @@ export async function githubReadDepartamentoImage(
     const filename = filenameFromImagemPath(current.data.imagem);
     if (!filename) return null;
     const file = await getFile(`${DEPT_ASSETS_DIR}/${filename}`);
+    if (!file) return null;
+    const ext = filename.split('.').pop()?.toLowerCase() || 'jpg';
+    return { buffer: file.buffer, ext, contentType: contentTypeForExt(ext === 'jpeg' ? 'jpg' : ext) };
+  } catch {
+    return null;
+  }
+}
+
+const IGREJA_ORDEM_SEED = [
+  'sede',
+  'alto-guaianases',
+  'biritiba-mirim',
+  'botujuru',
+  'biritiba-ussu',
+  'bras-cubas',
+  'cesar-de-souza',
+  'chacara-guanabara',
+  'conjunto-cocuera',
+  'guararema',
+  'itapety',
+  'jardim-aeroporto-ii',
+  'jardim-lair',
+  'jardim-vieira',
+  'jardim-das-bandeiras',
+  'lucinda',
+  'franca',
+  'bolivia',
+  'parque-olimpico',
+  'rodeio',
+  'sabauna',
+  'salesopolis',
+  'varinhas',
+  'vila-moraes',
+  'vila-natal',
+  'vila-paulista',
+] as const;
+
+export type IgrejaListItem = {
+  slug: string;
+  nome: string;
+  dirigente: string;
+  telefoneWhatsapp?: string;
+  facebook?: string;
+  email?: string;
+  endereco: string;
+  cep?: string;
+  mapaUrl: string;
+  imagem: string;
+};
+
+type IgrejaJson = IgrejaListItem;
+
+function igrejaSlugFromNome(nome: string): string {
+  const stripped = nome.replace(/^igreja\s+obpc\s*[–\-—:]?\s*/i, '');
+  return slugify(stripped);
+}
+
+function buildIgrejaJson(fields: {
+  slug: string;
+  nome: string;
+  dirigente: string;
+  endereco: string;
+  mapaUrl: string;
+  imagem: string;
+  telefoneWhatsapp?: string;
+  facebook?: string;
+  email?: string;
+  cep?: string;
+}): IgrejaJson {
+  const json: IgrejaJson = {
+    nome: fields.nome,
+    dirigente: fields.dirigente,
+    endereco: fields.endereco,
+    mapaUrl: fields.mapaUrl,
+    imagem: fields.imagem,
+    slug: fields.slug,
+  };
+  if (fields.telefoneWhatsapp) json.telefoneWhatsapp = fields.telefoneWhatsapp;
+  if (fields.facebook) json.facebook = fields.facebook;
+  if (fields.email) json.email = fields.email;
+  if (fields.cep) json.cep = fields.cep;
+  return json;
+}
+
+function jsonToIgreja(data: IgrejaJson, fallbackSlug: string): IgrejaListItem {
+  return {
+    slug: data.slug || fallbackSlug,
+    nome: data.nome,
+    dirigente: data.dirigente,
+    telefoneWhatsapp: data.telefoneWhatsapp,
+    facebook: data.facebook,
+    email: data.email,
+    endereco: data.endereco,
+    cep: data.cep,
+    mapaUrl: data.mapaUrl,
+    imagem: data.imagem,
+  };
+}
+
+async function uniqueIgrejaSlug(base: string): Promise<string> {
+  const files = await listDir(IGREJA_CONTENT_DIR);
+  const used = new Set(
+    files.filter((f) => f.name.endsWith('.json')).map((f) => f.name.replace(/\.json$/, '')),
+  );
+  const slug = base || 'igreja';
+  let attempt = 0;
+  while (used.has(attempt === 0 ? slug : `${slug}-${attempt}`)) {
+    attempt += 1;
+  }
+  return attempt === 0 ? slug : `${slug}-${attempt}`;
+}
+
+async function readIgrejaJson(slug: string): Promise<{ sha: string; data: IgrejaJson } | null> {
+  const file = await getFile(`${IGREJA_CONTENT_DIR}/${slug}.json`);
+  if (!file) return null;
+  const data = JSON.parse(file.buffer.toString('utf8')) as IgrejaJson;
+  return { sha: file.sha, data };
+}
+
+export async function githubListIgrejas(): Promise<IgrejaListItem[]> {
+  const files = (await listDir(IGREJA_CONTENT_DIR)).filter((f) => f.name.endsWith('.json'));
+  const items: IgrejaListItem[] = [];
+
+  for (const file of files) {
+    const fileSlug = file.name.replace(/\.json$/, '');
+    const parsed = await readIgrejaJson(fileSlug);
+    if (!parsed) continue;
+    items.push(jsonToIgreja(parsed.data, fileSlug));
+  }
+
+  return items.sort((a, b) => {
+    const ia = IGREJA_ORDEM_SEED.indexOf(a.slug as (typeof IGREJA_ORDEM_SEED)[number]);
+    const ib = IGREJA_ORDEM_SEED.indexOf(b.slug as (typeof IGREJA_ORDEM_SEED)[number]);
+    return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
+  });
+}
+
+export async function githubCreateIgreja({
+  nome,
+  dirigente,
+  telefoneWhatsapp,
+  facebook,
+  email,
+  endereco,
+  cep,
+  mapaUrl,
+  imageBuffer,
+  imageExt,
+}: {
+  nome: string;
+  dirigente: string;
+  telefoneWhatsapp?: string;
+  facebook?: string;
+  email?: string;
+  endereco: string;
+  cep?: string;
+  mapaUrl: string;
+  imageBuffer: Buffer;
+  imageExt: string;
+}): Promise<IgrejaListItem> {
+  const ext = imageExt.replace(/^\./, '').toLowerCase();
+  const slug = await uniqueIgrejaSlug(igrejaSlugFromNome(nome));
+  const imageFilename = `${slug}.${ext}`;
+  const imagem = `/images/igrejas/${imageFilename}`;
+  const json = buildIgrejaJson({
+    slug,
+    nome,
+    dirigente,
+    endereco,
+    mapaUrl,
+    imagem,
+    telefoneWhatsapp,
+    facebook,
+    email,
+    cep,
+  });
+
+  await putFile(
+    `${IGREJA_ASSETS_DIR}/${imageFilename}`,
+    imageBuffer,
+    `cms: adicionar imagem da igreja ${nome}`,
+  );
+
+  try {
+    await putFile(
+      `${IGREJA_CONTENT_DIR}/${slug}.json`,
+      Buffer.from(`${JSON.stringify(json, null, 2)}\n`, 'utf8'),
+      `cms: adicionar igreja ${nome}`,
+    );
+  } catch (err) {
+    const image = await getFile(`${IGREJA_ASSETS_DIR}/${imageFilename}`);
+    if (image) {
+      await deleteFile(
+        `${IGREJA_ASSETS_DIR}/${imageFilename}`,
+        image.sha,
+        `cms: rollback imagem ${imageFilename}`,
+      );
+    }
+    throw err;
+  }
+
+  return jsonToIgreja(json, slug);
+}
+
+export async function githubUpdateIgreja(
+  slug: string,
+  dados: {
+    nome: string;
+    dirigente: string;
+    telefoneWhatsapp?: string;
+    facebook?: string;
+    email?: string;
+    endereco: string;
+    cep?: string;
+    mapaUrl: string;
+    imageBuffer?: Buffer;
+    imageExt?: string;
+  },
+): Promise<IgrejaListItem> {
+  const current = await readIgrejaJson(slug);
+  if (!current) throw new Error('Igreja não encontrada');
+
+  let imagem = current.data.imagem;
+
+  if (dados.imageBuffer && dados.imageExt) {
+    const ext = dados.imageExt.replace(/^\./, '').toLowerCase();
+    const oldFilename = filenameFromImagemPath(current.data.imagem);
+    const newFilename = `${slug}.${ext}`;
+    const existing = await getFile(`${IGREJA_ASSETS_DIR}/${newFilename}`);
+
+    await putFile(
+      `${IGREJA_ASSETS_DIR}/${newFilename}`,
+      dados.imageBuffer,
+      `cms: atualizar imagem da igreja ${slug}`,
+      existing?.sha,
+    );
+
+    if (oldFilename && oldFilename !== newFilename) {
+      const oldFile = await getFile(`${IGREJA_ASSETS_DIR}/${oldFilename}`);
+      if (oldFile) {
+        await deleteFile(
+          `${IGREJA_ASSETS_DIR}/${oldFilename}`,
+          oldFile.sha,
+          `cms: remover imagem antiga ${oldFilename}`,
+        );
+      }
+    }
+
+    imagem = `/images/igrejas/${newFilename}`;
+  }
+
+  const json = buildIgrejaJson({
+    slug,
+    nome: dados.nome,
+    dirigente: dados.dirigente,
+    endereco: dados.endereco,
+    mapaUrl: dados.mapaUrl,
+    imagem,
+    telefoneWhatsapp: dados.telefoneWhatsapp,
+    facebook: dados.facebook,
+    email: dados.email,
+    cep: dados.cep,
+  });
+
+  await putFile(
+    `${IGREJA_CONTENT_DIR}/${slug}.json`,
+    Buffer.from(`${JSON.stringify(json, null, 2)}\n`, 'utf8'),
+    `cms: atualizar igreja ${slug}`,
+    current.sha,
+  );
+
+  return jsonToIgreja(json, slug);
+}
+
+export async function githubDeleteIgreja(slug: string): Promise<void> {
+  const current = await readIgrejaJson(slug);
+  if (!current) throw new Error('Igreja não encontrada');
+
+  await deleteFile(
+    `${IGREJA_CONTENT_DIR}/${slug}.json`,
+    current.sha,
+    `cms: remover igreja ${slug}`,
+  );
+
+  const filename = filenameFromImagemPath(current.data.imagem);
+  if (filename) {
+    const image = await getFile(`${IGREJA_ASSETS_DIR}/${filename}`);
+    if (image) {
+      await deleteFile(`${IGREJA_ASSETS_DIR}/${filename}`, image.sha, `cms: remover imagem ${filename}`);
+    }
+  }
+}
+
+export async function githubReadIgrejaImage(
+  slug: string,
+): Promise<{ buffer: Buffer; ext: string; contentType: string } | null> {
+  try {
+    const current = await readIgrejaJson(slug);
+    if (!current) return null;
+    const filename = filenameFromImagemPath(current.data.imagem);
+    if (!filename) return null;
+    const file = await getFile(`${IGREJA_ASSETS_DIR}/${filename}`);
     if (!file) return null;
     const ext = filename.split('.').pop()?.toLowerCase() || 'jpg';
     return { buffer: file.buffer, ext, contentType: contentTypeForExt(ext === 'jpeg' ? 'jpg' : ext) };

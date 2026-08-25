@@ -18,9 +18,14 @@ import {
   githubUpdateDepartamento,
   githubDeleteDepartamento,
   githubReadDepartamentoImage,
+  githubListIgrejas,
+  githubCreateIgreja,
+  githubUpdateIgreja,
+  githubDeleteIgreja,
+  githubReadIgrejaImage,
 } from './cms-github';
 
-export type { GaleriaListItem, DepartamentoListItem } from './cms-github';
+export type { GaleriaListItem, DepartamentoListItem, IgrejaListItem } from './cms-github';
 
 const rootDir = fileURLToPath(new URL('../..', import.meta.url));
 const contentDir = path.join(rootDir, 'src', 'content', 'comunicados');
@@ -336,4 +341,54 @@ export async function deleteDepartamento(slug: string) {
 export async function readDepartamentoImage(slug: string) {
   requireGitHubCms();
   return githubReadDepartamentoImage(slug);
+}
+
+export async function listIgrejas() {
+  requireGitHubCms();
+  return githubListIgrejas();
+}
+
+export async function createIgreja(input: {
+  nome: string;
+  dirigente: string;
+  telefoneWhatsapp?: string;
+  facebook?: string;
+  email?: string;
+  endereco: string;
+  cep?: string;
+  mapaUrl: string;
+  imageBuffer: Buffer;
+  imageExt: string;
+}) {
+  requireGitHubCms();
+  return githubCreateIgreja(input);
+}
+
+export async function updateIgreja(
+  slug: string,
+  dados: {
+    nome: string;
+    dirigente: string;
+    telefoneWhatsapp?: string;
+    facebook?: string;
+    email?: string;
+    endereco: string;
+    cep?: string;
+    mapaUrl: string;
+    imageBuffer?: Buffer;
+    imageExt?: string;
+  },
+) {
+  requireGitHubCms();
+  return githubUpdateIgreja(slug, dados);
+}
+
+export async function deleteIgreja(slug: string) {
+  requireGitHubCms();
+  return githubDeleteIgreja(slug);
+}
+
+export async function readIgrejaImage(slug: string) {
+  requireGitHubCms();
+  return githubReadIgrejaImage(slug);
 }
