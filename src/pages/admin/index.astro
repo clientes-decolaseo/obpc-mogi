@@ -20,7 +20,7 @@ const session = getSession(Astro.cookies);
       !session ? (
         <main class="admin-shell">
           <h1 class="admin-title">Painel administrativo</h1>
-          <p class="admin-muted">Entre com suas credenciais para gerenciar comunicados.</p>
+          <p class="admin-muted">Entre com suas credenciais para gerenciar comunicados e a galeria.</p>
           <form id="login-form" class="admin-card">
             <label class="admin-label">
               E-mail
@@ -39,7 +39,7 @@ const session = getSession(Astro.cookies);
           <header class="admin-header">
             <div>
               <p class="eyebrow">Área restrita</p>
-              <h1 class="admin-title">Comunicados</h1>
+              <h1 class="admin-title">Painel administrativo</h1>
               <p class="admin-muted">Logado como {session.email}</p>
             </div>
             <button type="button" id="logout-btn" class="btn-pill btn-pill--primary">Sair</button>
@@ -77,6 +77,43 @@ const session = getSession(Astro.cookies);
             <p id="list-empty" class="admin-muted" hidden>Nenhum comunicado cadastrado.</p>
             <p id="list-error" class="admin-error" hidden></p>
             <ul id="comunicados-list" class="admin-grid" hidden></ul>
+          </section>
+
+          <section class="admin-card">
+            <h2 class="admin-subtitle">Galeria de Fotos</h2>
+            <form id="galeria-create-form" class="admin-form">
+              <label class="admin-label">
+                Imagem (jpg, png ou webp — máx. 4MB)
+                <input
+                  type="file"
+                  name="imagem"
+                  accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp"
+                  required
+                  class="admin-input"
+                />
+              </label>
+              <label class="admin-label">
+                Legenda (acessibilidade)
+                <input
+                  type="text"
+                  name="legenda"
+                  class="admin-input"
+                  placeholder="Ex: Congresso Regional 2026"
+                />
+              </label>
+              <p id="galeria-create-feedback" class="admin-feedback" hidden></p>
+              <button type="submit" class="btn-pill btn-pill--primary" id="galeria-create-btn">
+                Adicionar à galeria
+              </button>
+            </form>
+          </section>
+
+          <section class="admin-card">
+            <h2 class="admin-subtitle">Fotos atuais</h2>
+            <p id="galeria-list-loading" class="admin-muted">Carregando…</p>
+            <p id="galeria-list-empty" class="admin-muted" hidden>Nenhuma foto cadastrada.</p>
+            <p id="galeria-list-error" class="admin-error" hidden></p>
+            <ul id="galeria-list" class="admin-grid" hidden></ul>
           </section>
 
           <dialog id="edit-dialog" class="admin-dialog">
@@ -382,6 +419,168 @@ const session = getSession(Astro.cookies);
       if (document.getElementById('comunicados-list')) {
         loadList();
       }
+
+      function galeriaPreviewUrl(nome) {
+        return '/api/admin/galeria/preview?nome=' + encodeURIComponent(nome);
+      }
+
+      async function parseApiJson(res) {
+        const raw = await res.text();
+        try {
+          return JSON.parse(raw);
+        } catch {
+          const plain = raw.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+          return {
+            error:
+              res.status === 413
+                ? 'Imagem grande demais para o servidor (máx. 4MB).'
+                : 'Erro ' + res.status + (plain ? ': ' + plain.slice(0, 180) : ''),
+          };
+        }
+      }
+
+      async function loadGaleriaList() {
+        const loading = document.getElementById('galeria-list-loading');
+        const empty = document.getElementById('galeria-list-empty');
+        const errorEl = document.getElementById('galeria-list-error');
+        const list = document.getElementById('galeria-list');
+        if (!list) return;
+
+        if (loading) loading.hidden = false;
+        if (empty) empty.hidden = true;
+        if (errorEl) {
+          errorEl.hidden = true;
+          errorEl.textContent = '';
+        }
+        list.hidden = true;
+        list.innerHTML = '';
+
+        try {
+          const res = await fetch('/api/admin/galeria/list');
+          const payload = await parseApiJson(res);
+          if (!res.ok) throw new Error(payload.error || 'Falha ao carregar');
+
+          const items = payload.items || [];
+          if (loading) loading.hidden = true;
+
+          if (items.length === 0) {
+            if (empty) empty.hidden = false;
+            return;
+          }
+
+          list.hidden = false;
+          items.forEach(function (item) {
+            const li = document.createElement('li');
+            li.className = 'admin-item';
+            li.dataset.nome = item.nomeArquivo;
+
+            li.innerHTML =
+              '<img class="admin-item__thumb" width="120" height="120" alt="" src="' +
+              galeriaPreviewUrl(item.nomeArquivo) +
+              '" />' +
+              '<div class="admin-item__body">' +
+              '<strong class="admin-item__title"></strong>' +
+              '<span class="admin-item__date js-legenda"></span>' +
+              '<div class="admin-item__actions">' +
+              '<button type="button" class="admin-btn-danger js-galeria-delete">Excluir</button>' +
+              '</div></div>';
+
+            li.querySelector('.admin-item__title').textContent = item.nomeArquivo;
+            const captionEl = li.querySelector('.js-legenda');
+            if (item.legenda) {
+              captionEl.textContent = item.legenda;
+            } else {
+              captionEl.textContent = 'Sem legenda';
+              captionEl.classList.add('admin-item__caption--empty');
+            }
+            list.appendChild(li);
+          });
+        } catch (err) {
+          if (loading) loading.hidden = true;
+          if (errorEl) {
+            errorEl.hidden = false;
+            errorEl.textContent = err.message || 'Erro ao carregar galeria';
+          }
+        }
+      }
+
+      const galeriaCreateForm = document.getElementById('galeria-create-form');
+      if (galeriaCreateForm) {
+        galeriaCreateForm.addEventListener('submit', async function (event) {
+          event.preventDefault();
+          const form = event.currentTarget;
+          const feedback = document.getElementById('galeria-create-feedback');
+          const submitBtn = document.getElementById('galeria-create-btn');
+          const formData = new FormData(form);
+          const imagem = formData.get('imagem');
+          if (imagem instanceof File && imagem.size > 4 * 1024 * 1024) {
+            if (feedback) {
+              feedback.hidden = false;
+              feedback.classList.add('is-error');
+              feedback.classList.remove('is-ok');
+              feedback.textContent = 'Imagem deve ter no máximo 4MB.';
+            }
+            return;
+          }
+
+          if (feedback) {
+            feedback.hidden = true;
+            feedback.textContent = '';
+            feedback.classList.remove('is-error', 'is-ok');
+          }
+          if (submitBtn) submitBtn.disabled = true;
+
+          const res = await fetch('/api/admin/galeria/create', {
+            method: 'POST',
+            body: formData,
+          });
+          const payload = await parseApiJson(res);
+          if (submitBtn) submitBtn.disabled = false;
+
+          if (!res.ok) {
+            if (feedback) {
+              feedback.hidden = false;
+              feedback.classList.add('is-error');
+              feedback.textContent = payload.error || 'Não foi possível adicionar a foto';
+            }
+            return;
+          }
+
+          if (feedback) {
+            feedback.hidden = false;
+            feedback.classList.add('is-ok');
+            feedback.textContent = 'Foto adicionada. O site atualiza em 1–2 minutos (novo deploy).';
+          }
+          form.reset();
+          loadGaleriaList();
+        });
+      }
+
+      document.getElementById('galeria-list')?.addEventListener('click', async function (event) {
+        const target = event.target;
+        if (!(target instanceof HTMLElement) || !target.classList.contains('js-galeria-delete')) return;
+        const item = target.closest('.admin-item');
+        if (!item) return;
+        const nome = item.dataset.nome;
+        const ok = window.confirm('Excluir a foto "' + nome + '"? Esta ação não pode ser desfeita.');
+        if (!ok) return;
+
+        const res = await fetch('/api/admin/galeria/delete', {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ nomeArquivo: nome }),
+        });
+        const payload = await parseApiJson(res);
+        if (!res.ok) {
+          window.alert(payload.error || 'Não foi possível excluir');
+          return;
+        }
+        loadGaleriaList();
+      });
+
+      if (document.getElementById('galeria-list')) {
+        loadGaleriaList();
+      }
     </script>
 
     <style>
@@ -529,6 +728,11 @@ const session = getSession(Astro.cookies);
       .admin-item__date {
         color: var(--color-neutral-700);
         font-size: 0.875rem;
+      }
+
+      .admin-item__caption--empty {
+        font-style: italic;
+        color: var(--color-neutral-500);
       }
 
       .admin-item__actions {

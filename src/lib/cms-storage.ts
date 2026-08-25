@@ -9,7 +9,13 @@ import {
   githubUpdateComunicado,
   githubDeleteComunicado,
   githubReadComunicadoImage,
+  githubListGaleria,
+  githubCreateGaleriaImage,
+  githubDeleteGaleriaImage,
+  githubReadGaleriaImage,
 } from './cms-github';
+
+export type { GaleriaListItem } from './cms-github';
 
 const rootDir = fileURLToPath(new URL('../..', import.meta.url));
 const contentDir = path.join(rootDir, 'src', 'content', 'comunicados');
@@ -247,4 +253,36 @@ export async function readComunicadoImage(
   } catch {
     return null;
   }
+}
+
+function requireGitHubCms(): void {
+  if (!isGitHubCmsEnabled()) {
+    throw new Error(
+      'GITHUB_TOKEN não configurado. Sem ele o painel não consegue gravar a galeria na Vercel.',
+    );
+  }
+}
+
+export async function listGaleria() {
+  requireGitHubCms();
+  return githubListGaleria();
+}
+
+export async function createGaleriaImage(input: {
+  imageBuffer: Buffer;
+  imageExt: string;
+  legenda: string;
+}) {
+  requireGitHubCms();
+  return githubCreateGaleriaImage(input);
+}
+
+export async function deleteGaleriaImage(nomeArquivo: string) {
+  requireGitHubCms();
+  return githubDeleteGaleriaImage(nomeArquivo);
+}
+
+export async function readGaleriaImage(nomeArquivo: string) {
+  requireGitHubCms();
+  return githubReadGaleriaImage(nomeArquivo);
 }

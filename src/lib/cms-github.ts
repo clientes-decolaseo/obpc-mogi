@@ -25,7 +25,10 @@ type UpdateComunicadoInput = {
 const API = 'https://api.github.com';
 const CONTENT_DIR = 'src/content/comunicados';
 const ASSETS_DIR = 'src/assets/comunicados';
+const GALERIA_DIR = 'src/assets/galeria';
+const GALERIA_META = 'src/content/galeria-meta.json';
 const UA = 'obpcmogi-cms';
+const GALERIA_IMAGE_EXT = /\.(jpe?g|png|webp)$/i;
 
 type ComunicadoJson = {
   titulo: string;
@@ -339,6 +342,124 @@ export async function githubDeleteComunicado(slug: string): Promise<void> {
     if (image) {
       await deleteFile(`${ASSETS_DIR}/${filename}`, image.sha, `cms: remover imagem ${filename}`);
     }
+  }
+}
+
+export type GaleriaListItem = {
+  nomeArquivo: string;
+  legenda: string;
+};
+
+type GaleriaMeta = Record<string, string>;
+
+function contentTypeForExt(ext: string): string {
+  if (ext === 'png') return 'image/png';
+  if (ext === 'webp') return 'image/webp';
+  return 'image/jpeg';
+}
+
+function isGaleriaImageName(nome: string): boolean {
+  return !nome.includes('/') && !nome.includes('\\') && !nome.includes('..') && GALERIA_IMAGE_EXT.test(nome);
+}
+
+async function readGaleriaMeta(): Promise<{ sha?: string; data: GaleriaMeta }> {
+  const file = await getFile(GALERIA_META);
+  if (!file) return { data: {} };
+  try {
+    const parsed = JSON.parse(file.buffer.toString('utf8')) as unknown;
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      return { sha: file.sha, data: parsed as GaleriaMeta };
+    }
+  } catch {
+    // meta corrompido — segue vazio mas preserva sha pra sobrescrever
+  }
+  return { sha: file.sha, data: {} };
+}
+
+export async function githubListGaleria(): Promise<GaleriaListItem[]> {
+  const files = await listDir(GALERIA_DIR);
+  const meta = await readGaleriaMeta();
+  return files
+    .filter((f) => f.type !== 'dir' && isGaleriaImageName(f.name))
+    .map((f) => ({
+      nomeArquivo: f.name,
+      legenda: typeof meta.data[f.name] === 'string' ? meta.data[f.name] : '',
+    }))
+    .sort((a, b) => a.nomeArquivo.localeCompare(b.nomeArquivo, 'pt-BR'));
+}
+
+export async function githubCreateGaleriaImage({
+  imageBuffer,
+  imageExt,
+  legenda,
+}: {
+  imageBuffer: Buffer;
+  imageExt: string;
+  legenda: string;
+}): Promise<GaleriaListItem> {
+  const ext = imageExt.replace(/^\./, '').toLowerCase();
+  const nomeArquivo = `galeria-${Date.now()}.${ext}`;
+  const caption = legenda.trim();
+
+  await putFile(`${GALERIA_DIR}/${nomeArquivo}`, imageBuffer, `cms: adicionar foto ${nomeArquivo}`);
+
+  if (caption) {
+    try {
+      const meta = await readGaleriaMeta();
+      meta.data[nomeArquivo] = caption;
+      await putFile(
+        GALERIA_META,
+        Buffer.from(`${JSON.stringify(meta.data, null, 2)}\n`, 'utf8'),
+        `cms: legenda da foto ${nomeArquivo}`,
+        meta.sha,
+      );
+    } catch (err) {
+      const image = await getFile(`${GALERIA_DIR}/${nomeArquivo}`);
+      if (image) {
+        await deleteFile(`${GALERIA_DIR}/${nomeArquivo}`, image.sha, `cms: rollback foto ${nomeArquivo}`);
+      }
+      throw err;
+    }
+  }
+
+  return { nomeArquivo, legenda: caption };
+}
+
+export async function githubDeleteGaleriaImage(nomeArquivo: string): Promise<void> {
+  const nome = nomeArquivo.split(/[/\\]/).pop() || '';
+  if (!isGaleriaImageName(nome)) {
+    throw new Error('Nome de arquivo inválido');
+  }
+
+  const image = await getFile(`${GALERIA_DIR}/${nome}`);
+  if (!image) throw new Error('Foto não encontrada');
+
+  await deleteFile(`${GALERIA_DIR}/${nome}`, image.sha, `cms: remover foto ${nome}`);
+
+  const meta = await readGaleriaMeta();
+  if (Object.prototype.hasOwnProperty.call(meta.data, nome)) {
+    delete meta.data[nome];
+    await putFile(
+      GALERIA_META,
+      Buffer.from(`${JSON.stringify(meta.data, null, 2)}\n`, 'utf8'),
+      `cms: remover legenda ${nome}`,
+      meta.sha,
+    );
+  }
+}
+
+export async function githubReadGaleriaImage(
+  nomeArquivo: string,
+): Promise<{ buffer: Buffer; ext: string; contentType: string } | null> {
+  const nome = nomeArquivo.split(/[/\\]/).pop() || '';
+  if (!isGaleriaImageName(nome)) return null;
+  try {
+    const file = await getFile(`${GALERIA_DIR}/${nome}`);
+    if (!file) return null;
+    const ext = nome.split('.').pop()?.toLowerCase() || 'jpg';
+    return { buffer: file.buffer, ext, contentType: contentTypeForExt(ext === 'jpeg' ? 'jpg' : ext) };
+  } catch {
+    return null;
   }
 }
 
