@@ -236,6 +236,15 @@ const session = getSession(Astro.cookies);
           const form = event.currentTarget;
           const feedback = document.getElementById('create-feedback');
           const formData = new FormData(form);
+          const imagem = formData.get('imagem');
+          if (imagem instanceof File && imagem.size > 4 * 1024 * 1024) {
+            if (feedback) {
+              feedback.hidden = false;
+              feedback.classList.add('is-error');
+              feedback.textContent = 'Imagem deve ter no máximo 4MB.';
+            }
+            return;
+          }
 
           if (feedback) {
             feedback.hidden = true;
@@ -247,14 +256,19 @@ const session = getSession(Astro.cookies);
             method: 'POST',
             body: formData,
           });
-          const payload = await res.json().catch(function () {
-            return {
+          const raw = await res.text();
+          let payload = { error: '' };
+          try {
+            payload = JSON.parse(raw);
+          } catch {
+            const plain = raw.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+            payload = {
               error:
                 res.status === 413
                   ? 'Imagem grande demais para o servidor (máx. 4MB).'
-                  : 'Erro inesperado',
+                  : 'Erro ' + res.status + (plain ? ': ' + plain.slice(0, 180) : ''),
             };
-          });
+          }
 
           if (!res.ok) {
             if (feedback) {

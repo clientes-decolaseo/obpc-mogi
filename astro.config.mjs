@@ -7,7 +7,9 @@ import tailwindcss from '@tailwindcss/vite';
 export default defineConfig({
   site: 'https://obpcmogi.com.br',
   output: 'static',
-  adapter: vercel(),
+  adapter: vercel({
+    maxDuration: 10,
+  }),
   build: {
     inlineStylesheets: 'always',
   },

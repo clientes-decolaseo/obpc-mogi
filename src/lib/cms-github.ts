@@ -52,7 +52,7 @@ function repoConfig() {
   const owner = readEnv('VERCEL_GIT_REPO_OWNER');
   const slug = readEnv('VERCEL_GIT_REPO_SLUG');
   const repo =
-    readEnv('GITHUB_REPO') || (owner && slug ? `${owner}/${slug}` : 'sennaricarte/obpc-mogi');
+    readEnv('GITHUB_REPO') || (owner && slug ? `${owner}/${slug}` : 'clientes-decolaseo/obpc-mogi');
   const branch = readEnv('GITHUB_BRANCH') || 'main';
 
   return { token, repo, branch };
