@@ -1,10 +1,10 @@
 {
   "nome": "Igreja OBPC Alto Guaianases",
   "dirigente": "Pr. Fabio Gama",
-  "facebook": "https://www.facebook.com/obpcaltoguainazes/",
   "endereco": "Rua Newton Alves dos Anjos, 213",
-  "cep": "08700-000",
   "mapaUrl": "https://goo.gl/maps/PwPkDE29ctobT4sf6",
   "imagem": "/images/igrejas/alto-guaianases.jpg",
-  "slug": "alto-guaianases"
+  "slug": "alto-guaianases",
+  "facebook": "https://www.facebook.com/obpcaltoguainazes/",
+  "cep": "08700-000"
 }
