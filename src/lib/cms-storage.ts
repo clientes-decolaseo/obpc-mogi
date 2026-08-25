@@ -13,9 +13,14 @@ import {
   githubCreateGaleriaImage,
   githubDeleteGaleriaImage,
   githubReadGaleriaImage,
+  githubListDepartamentos,
+  githubCreateDepartamento,
+  githubUpdateDepartamento,
+  githubDeleteDepartamento,
+  githubReadDepartamentoImage,
 } from './cms-github';
 
-export type { GaleriaListItem } from './cms-github';
+export type { GaleriaListItem, DepartamentoListItem } from './cms-github';
 
 const rootDir = fileURLToPath(new URL('../..', import.meta.url));
 const contentDir = path.join(rootDir, 'src', 'content', 'comunicados');
@@ -285,4 +290,50 @@ export async function deleteGaleriaImage(nomeArquivo: string) {
 export async function readGaleriaImage(nomeArquivo: string) {
   requireGitHubCms();
   return githubReadGaleriaImage(nomeArquivo);
+}
+
+export async function listDepartamentos() {
+  requireGitHubCms();
+  return githubListDepartamentos();
+}
+
+export async function createDepartamento(input: {
+  nome: string;
+  sigla: string;
+  descricaoCurta: string;
+  descricaoCompleta: string;
+  lideranca: string;
+  ordem: number;
+  imageBuffer: Buffer;
+  imageExt: string;
+}) {
+  requireGitHubCms();
+  return githubCreateDepartamento(input);
+}
+
+export async function updateDepartamento(
+  slug: string,
+  dados: {
+    nome: string;
+    sigla: string;
+    descricaoCurta: string;
+    descricaoCompleta: string;
+    lideranca: string;
+    ordem: number;
+    imageBuffer?: Buffer;
+    imageExt?: string;
+  },
+) {
+  requireGitHubCms();
+  return githubUpdateDepartamento(slug, dados);
+}
+
+export async function deleteDepartamento(slug: string) {
+  requireGitHubCms();
+  return githubDeleteDepartamento(slug);
+}
+
+export async function readDepartamentoImage(slug: string) {
+  requireGitHubCms();
+  return githubReadDepartamentoImage(slug);
 }

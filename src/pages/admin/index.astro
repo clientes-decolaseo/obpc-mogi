@@ -20,7 +20,7 @@ const session = getSession(Astro.cookies);
       !session ? (
         <main class="admin-shell">
           <h1 class="admin-title">Painel administrativo</h1>
-          <p class="admin-muted">Entre com suas credenciais para gerenciar comunicados e a galeria.</p>
+          <p class="admin-muted">Entre com suas credenciais para gerenciar comunicados, galeria e departamentos.</p>
           <form id="login-form" class="admin-card">
             <label class="admin-label">
               E-mail
@@ -116,6 +116,56 @@ const session = getSession(Astro.cookies);
             <ul id="galeria-list" class="admin-grid" hidden></ul>
           </section>
 
+          <section class="admin-card">
+            <h2 class="admin-subtitle">Novo departamento</h2>
+            <form id="dept-create-form" class="admin-form">
+              <label class="admin-label">
+                Nome
+                <input type="text" name="nome" required class="admin-input" placeholder="Ex: ADOBRAC" />
+              </label>
+              <label class="admin-label">
+                Sigla
+                <input type="text" name="sigla" required class="admin-input" placeholder="Ex: ADOBRAC" />
+              </label>
+              <label class="admin-label">
+                Descrição curta
+                <input type="text" name="descricaoCurta" required class="admin-input" />
+              </label>
+              <label class="admin-label">
+                Descrição completa
+                <textarea name="descricaoCompleta" required class="admin-input admin-textarea" rows="6"></textarea>
+              </label>
+              <label class="admin-label">
+                Liderança
+                <input type="text" name="lideranca" required class="admin-input" />
+              </label>
+              <label class="admin-label">
+                Ordem
+                <input type="number" name="ordem" required class="admin-input" min="0" step="1" />
+              </label>
+              <label class="admin-label">
+                Imagem (jpg, png ou webp — máx. 4MB)
+                <input
+                  type="file"
+                  name="imagem"
+                  accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp"
+                  required
+                  class="admin-input"
+                />
+              </label>
+              <p id="dept-create-feedback" class="admin-feedback" hidden></p>
+              <button type="submit" class="btn-pill btn-pill--primary" id="dept-create-btn">Criar departamento</button>
+            </form>
+          </section>
+
+          <section class="admin-card">
+            <h2 class="admin-subtitle">Departamentos Regionais</h2>
+            <p id="dept-list-loading" class="admin-muted">Carregando…</p>
+            <p id="dept-list-empty" class="admin-muted" hidden>Nenhum departamento cadastrado.</p>
+            <p id="dept-list-error" class="admin-error" hidden></p>
+            <ul id="dept-list" class="admin-grid" hidden></ul>
+          </section>
+
           <dialog id="edit-dialog" class="admin-dialog">
             <form id="edit-form" method="dialog" class="admin-form">
               <h2 class="admin-subtitle">Editar comunicado</h2>
@@ -140,6 +190,52 @@ const session = getSession(Astro.cookies);
               <p id="edit-feedback" class="admin-feedback" hidden></p>
               <div class="admin-dialog__actions">
                 <button type="button" id="edit-cancel" class="admin-btn-ghost">Cancelar</button>
+                <button type="submit" class="btn-pill btn-pill--primary">Salvar</button>
+              </div>
+            </form>
+          </dialog>
+
+          <dialog id="dept-edit-dialog" class="admin-dialog admin-dialog--wide">
+            <form id="dept-edit-form" method="dialog" class="admin-form">
+              <h2 class="admin-subtitle">Editar departamento</h2>
+              <img id="dept-edit-preview" class="admin-dialog__preview" alt="Imagem atual do departamento" width="240" height="240" />
+              <input type="hidden" name="slug" />
+              <label class="admin-label">
+                Nome
+                <input type="text" name="nome" required class="admin-input" />
+              </label>
+              <label class="admin-label">
+                Sigla
+                <input type="text" name="sigla" required class="admin-input" />
+              </label>
+              <label class="admin-label">
+                Descrição curta
+                <input type="text" name="descricaoCurta" required class="admin-input" />
+              </label>
+              <label class="admin-label">
+                Descrição completa
+                <textarea name="descricaoCompleta" required class="admin-input admin-textarea" rows="8"></textarea>
+              </label>
+              <label class="admin-label">
+                Liderança
+                <input type="text" name="lideranca" required class="admin-input" />
+              </label>
+              <label class="admin-label">
+                Ordem
+                <input type="number" name="ordem" required class="admin-input" min="0" step="1" />
+              </label>
+              <label class="admin-label">
+                Trocar imagem (deixe vazio para manter a atual)
+                <input
+                  type="file"
+                  name="imagem"
+                  accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp"
+                  class="admin-input"
+                />
+              </label>
+              <p id="dept-edit-feedback" class="admin-feedback" hidden></p>
+              <div class="admin-dialog__actions">
+                <button type="button" id="dept-edit-cancel" class="admin-btn-ghost">Cancelar</button>
                 <button type="submit" class="btn-pill btn-pill--primary">Salvar</button>
               </div>
             </form>
@@ -581,6 +677,236 @@ const session = getSession(Astro.cookies);
       if (document.getElementById('galeria-list')) {
         loadGaleriaList();
       }
+
+      var deptBySlug = {};
+
+      function deptPreviewUrl(slug) {
+        return '/api/admin/departamentos/preview?slug=' + encodeURIComponent(slug);
+      }
+
+      function setNextDeptOrdem(items) {
+        const ordemInput = document.querySelector('#dept-create-form [name="ordem"]');
+        if (!ordemInput) return;
+        const max = items.reduce(function (acc, item) {
+          const n = Number(item.ordem);
+          return Number.isFinite(n) && n > acc ? n : acc;
+        }, 0);
+        ordemInput.value = String(max + 1);
+      }
+
+      async function loadDeptList() {
+        const loading = document.getElementById('dept-list-loading');
+        const empty = document.getElementById('dept-list-empty');
+        const errorEl = document.getElementById('dept-list-error');
+        const list = document.getElementById('dept-list');
+        if (!list) return;
+
+        if (loading) loading.hidden = false;
+        if (empty) empty.hidden = true;
+        if (errorEl) {
+          errorEl.hidden = true;
+          errorEl.textContent = '';
+        }
+        list.hidden = true;
+        list.innerHTML = '';
+        deptBySlug = {};
+
+        try {
+          const res = await fetch('/api/admin/departamentos/list');
+          const payload = await parseApiJson(res);
+          if (!res.ok) throw new Error(payload.error || 'Falha ao carregar');
+
+          const items = payload.items || [];
+          if (loading) loading.hidden = true;
+          setNextDeptOrdem(items);
+
+          if (items.length === 0) {
+            if (empty) empty.hidden = false;
+            return;
+          }
+
+          list.hidden = false;
+          items.forEach(function (item) {
+            deptBySlug[item.slug] = item;
+            const li = document.createElement('li');
+            li.className = 'admin-item';
+            li.dataset.slug = item.slug;
+
+            li.innerHTML =
+              '<img class="admin-item__thumb" width="120" height="120" alt="" src="' +
+              deptPreviewUrl(item.slug) +
+              '" />' +
+              '<div class="admin-item__body">' +
+              '<strong class="admin-item__title"></strong>' +
+              '<span class="admin-item__date js-sigla"></span>' +
+              '<span class="admin-item__date js-lideranca"></span>' +
+              '<span class="admin-item__date js-ordem"></span>' +
+              '<div class="admin-item__actions">' +
+              '<button type="button" class="admin-btn-ghost js-dept-edit">Editar</button>' +
+              '<button type="button" class="admin-btn-danger js-dept-delete">Excluir</button>' +
+              '</div></div>';
+
+            li.querySelector('.admin-item__title').textContent = item.nome;
+            li.querySelector('.js-sigla').textContent = 'Sigla: ' + item.sigla;
+            li.querySelector('.js-lideranca').textContent = 'Liderança: ' + item.lideranca;
+            li.querySelector('.js-ordem').textContent = 'Ordem: ' + item.ordem;
+            list.appendChild(li);
+          });
+        } catch (err) {
+          if (loading) loading.hidden = true;
+          if (errorEl) {
+            errorEl.hidden = false;
+            errorEl.textContent = err.message || 'Erro ao carregar departamentos';
+          }
+        }
+      }
+
+      const deptCreateForm = document.getElementById('dept-create-form');
+      if (deptCreateForm) {
+        deptCreateForm.addEventListener('submit', async function (event) {
+          event.preventDefault();
+          const form = event.currentTarget;
+          const feedback = document.getElementById('dept-create-feedback');
+          const submitBtn = document.getElementById('dept-create-btn');
+          const formData = new FormData(form);
+          const imagem = formData.get('imagem');
+          if (imagem instanceof File && imagem.size > 4 * 1024 * 1024) {
+            if (feedback) {
+              feedback.hidden = false;
+              feedback.classList.add('is-error');
+              feedback.classList.remove('is-ok');
+              feedback.textContent = 'Imagem deve ter no máximo 4MB.';
+            }
+            return;
+          }
+
+          if (feedback) {
+            feedback.hidden = true;
+            feedback.textContent = '';
+            feedback.classList.remove('is-error', 'is-ok');
+          }
+          if (submitBtn) submitBtn.disabled = true;
+
+          const res = await fetch('/api/admin/departamentos/create', {
+            method: 'POST',
+            body: formData,
+          });
+          const payload = await parseApiJson(res);
+          if (submitBtn) submitBtn.disabled = false;
+
+          if (!res.ok) {
+            if (feedback) {
+              feedback.hidden = false;
+              feedback.classList.add('is-error');
+              feedback.textContent = payload.error || 'Não foi possível criar';
+            }
+            return;
+          }
+
+          if (feedback) {
+            feedback.hidden = false;
+            feedback.classList.add('is-ok');
+            feedback.textContent = 'Departamento criado. O site atualiza em 1–2 minutos (novo deploy).';
+          }
+          form.reset();
+          loadDeptList();
+        });
+      }
+
+      const deptEditDialog = document.getElementById('dept-edit-dialog');
+      const deptEditForm = document.getElementById('dept-edit-form');
+      const deptEditCancel = document.getElementById('dept-edit-cancel');
+
+      deptEditCancel?.addEventListener('click', function () {
+        deptEditDialog?.close();
+      });
+
+      document.getElementById('dept-list')?.addEventListener('click', async function (event) {
+        const target = event.target;
+        if (!(target instanceof HTMLElement)) return;
+        const itemEl = target.closest('.admin-item');
+        if (!itemEl) return;
+        const slug = itemEl.dataset.slug;
+        const item = deptBySlug[slug];
+        if (!item) return;
+
+        if (target.classList.contains('js-dept-edit')) {
+          if (!deptEditForm || !deptEditDialog) return;
+          deptEditForm.slug.value = item.slug;
+          deptEditForm.nome.value = item.nome;
+          deptEditForm.sigla.value = item.sigla;
+          deptEditForm.descricaoCurta.value = item.descricaoCurta;
+          deptEditForm.descricaoCompleta.value = item.descricaoCompleta;
+          deptEditForm.lideranca.value = item.lideranca;
+          deptEditForm.ordem.value = item.ordem;
+          deptEditForm.imagem.value = '';
+          const preview = document.getElementById('dept-edit-preview');
+          if (preview) preview.src = deptPreviewUrl(item.slug) + '&t=' + Date.now();
+          const feedback = document.getElementById('dept-edit-feedback');
+          if (feedback) {
+            feedback.hidden = true;
+            feedback.textContent = '';
+            feedback.classList.remove('is-error', 'is-ok');
+          }
+          deptEditDialog.showModal();
+          return;
+        }
+
+        if (target.classList.contains('js-dept-delete')) {
+          const ok = window.confirm('Excluir o departamento "' + item.nome + '"? Esta ação não pode ser desfeita.');
+          if (!ok) return;
+          const res = await fetch('/api/admin/departamentos/delete', {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ slug: slug }),
+          });
+          const payload = await parseApiJson(res);
+          if (!res.ok) {
+            window.alert(payload.error || 'Não foi possível excluir');
+            return;
+          }
+          loadDeptList();
+        }
+      });
+
+      deptEditForm?.addEventListener('submit', async function (event) {
+        event.preventDefault();
+        const form = event.currentTarget;
+        const feedback = document.getElementById('dept-edit-feedback');
+        const formData = new FormData(form);
+        const file = formData.get('imagem');
+        if (!(file instanceof File) || file.size === 0) {
+          formData.delete('imagem');
+        }
+
+        if (feedback) {
+          feedback.hidden = true;
+          feedback.textContent = '';
+          feedback.classList.remove('is-error', 'is-ok');
+        }
+
+        const res = await fetch('/api/admin/departamentos/update', {
+          method: 'PUT',
+          body: formData,
+        });
+        const payload = await parseApiJson(res);
+
+        if (!res.ok) {
+          if (feedback) {
+            feedback.hidden = false;
+            feedback.classList.add('is-error');
+            feedback.textContent = payload.error || 'Não foi possível salvar';
+          }
+          return;
+        }
+
+        deptEditDialog?.close();
+        loadDeptList();
+      });
+
+      if (document.getElementById('dept-list')) {
+        loadDeptList();
+      }
     </script>
 
     <style>
@@ -659,6 +985,12 @@ const session = getSession(Astro.cookies);
         border: 1px solid var(--color-neutral-200);
         border-radius: var(--radius-md);
         font: inherit;
+      }
+
+      .admin-textarea {
+        min-height: 8rem;
+        resize: vertical;
+        line-height: 1.5;
       }
 
       .admin-error {
@@ -769,6 +1101,18 @@ const session = getSession(Astro.cookies);
         border-radius: var(--radius-lg);
         padding: var(--space-lg);
         box-shadow: var(--shadow-md);
+      }
+
+      .admin-dialog--wide {
+        width: min(40rem, calc(100vw - 2rem));
+      }
+
+      .admin-dialog__preview {
+        width: 100%;
+        max-height: 10rem;
+        object-fit: contain;
+        border-radius: var(--radius-md);
+        background: var(--color-neutral-100);
       }
 
       .admin-dialog::backdrop {

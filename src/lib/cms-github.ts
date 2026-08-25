@@ -27,6 +27,8 @@ const CONTENT_DIR = 'src/content/comunicados';
 const ASSETS_DIR = 'src/assets/comunicados';
 const GALERIA_DIR = 'src/assets/galeria';
 const GALERIA_META = 'src/content/galeria-meta.json';
+const DEPT_CONTENT_DIR = 'src/content/departamentos';
+const DEPT_ASSETS_DIR = 'src/assets/departamentos';
 const UA = 'obpcmogi-cms';
 const GALERIA_IMAGE_EXT = /\.(jpe?g|png|webp)$/i;
 
@@ -477,6 +479,227 @@ export async function githubReadComunicadoImage(
     const contentType =
       ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : 'image/jpeg';
     return { buffer: file.buffer, ext, contentType };
+  } catch {
+    return null;
+  }
+}
+
+export type DepartamentoListItem = {
+  slug: string;
+  nome: string;
+  sigla: string;
+  descricaoCurta: string;
+  descricaoCompleta: string;
+  lideranca: string;
+  imagem: string;
+  ordem: number;
+};
+
+type DepartamentoJson = Omit<DepartamentoListItem, 'slug'>;
+
+function jsonToDepartamento(slug: string, data: DepartamentoJson): DepartamentoListItem {
+  return {
+    slug,
+    nome: data.nome,
+    sigla: data.sigla,
+    descricaoCurta: data.descricaoCurta,
+    descricaoCompleta: data.descricaoCompleta,
+    lideranca: data.lideranca,
+    imagem: data.imagem,
+    ordem: Number(data.ordem) || 0,
+  };
+}
+
+async function uniqueDepartamentoSlug(base: string): Promise<string> {
+  const files = await listDir(DEPT_CONTENT_DIR);
+  const used = new Set(
+    files.filter((f) => f.name.endsWith('.json')).map((f) => f.name.replace(/\.json$/, '')),
+  );
+  const slug = base || 'departamento';
+  let attempt = 0;
+  while (used.has(attempt === 0 ? slug : `${slug}-${attempt}`)) {
+    attempt += 1;
+  }
+  return attempt === 0 ? slug : `${slug}-${attempt}`;
+}
+
+async function readDepartamentoJson(slug: string): Promise<{ sha: string; data: DepartamentoJson } | null> {
+  const file = await getFile(`${DEPT_CONTENT_DIR}/${slug}.json`);
+  if (!file) return null;
+  const data = JSON.parse(file.buffer.toString('utf8')) as DepartamentoJson;
+  return { sha: file.sha, data };
+}
+
+export async function githubListDepartamentos(): Promise<DepartamentoListItem[]> {
+  const files = (await listDir(DEPT_CONTENT_DIR)).filter((f) => f.name.endsWith('.json'));
+  const items: DepartamentoListItem[] = [];
+
+  for (const file of files) {
+    const slug = file.name.replace(/\.json$/, '');
+    const parsed = await readDepartamentoJson(slug);
+    if (!parsed) continue;
+    items.push(jsonToDepartamento(slug, parsed.data));
+  }
+
+  return items.sort((a, b) => a.ordem - b.ordem || a.nome.localeCompare(b.nome, 'pt-BR'));
+}
+
+export async function githubCreateDepartamento({
+  nome,
+  sigla,
+  descricaoCurta,
+  descricaoCompleta,
+  lideranca,
+  ordem,
+  imageBuffer,
+  imageExt,
+}: {
+  nome: string;
+  sigla: string;
+  descricaoCurta: string;
+  descricaoCompleta: string;
+  lideranca: string;
+  ordem: number;
+  imageBuffer: Buffer;
+  imageExt: string;
+}): Promise<DepartamentoListItem> {
+  const ext = imageExt.replace(/^\./, '').toLowerCase();
+  const slug = await uniqueDepartamentoSlug(slugify(nome));
+  const imageFilename = `${slug}.${ext}`;
+  const imagem = `/images/departamentos/${imageFilename}`;
+  const json: DepartamentoJson = {
+    nome,
+    sigla,
+    descricaoCurta,
+    descricaoCompleta,
+    lideranca,
+    imagem,
+    ordem,
+  };
+
+  await putFile(
+    `${DEPT_ASSETS_DIR}/${imageFilename}`,
+    imageBuffer,
+    `cms: adicionar imagem do departamento ${nome}`,
+  );
+
+  try {
+    await putFile(
+      `${DEPT_CONTENT_DIR}/${slug}.json`,
+      Buffer.from(`${JSON.stringify(json, null, 2)}\n`, 'utf8'),
+      `cms: adicionar departamento ${nome}`,
+    );
+  } catch (err) {
+    const image = await getFile(`${DEPT_ASSETS_DIR}/${imageFilename}`);
+    if (image) {
+      await deleteFile(
+        `${DEPT_ASSETS_DIR}/${imageFilename}`,
+        image.sha,
+        `cms: rollback imagem ${imageFilename}`,
+      );
+    }
+    throw err;
+  }
+
+  return jsonToDepartamento(slug, json);
+}
+
+export async function githubUpdateDepartamento(
+  slug: string,
+  dados: {
+    nome: string;
+    sigla: string;
+    descricaoCurta: string;
+    descricaoCompleta: string;
+    lideranca: string;
+    ordem: number;
+    imageBuffer?: Buffer;
+    imageExt?: string;
+  },
+): Promise<DepartamentoListItem> {
+  const current = await readDepartamentoJson(slug);
+  if (!current) throw new Error('Departamento não encontrado');
+
+  let imagem = current.data.imagem;
+
+  if (dados.imageBuffer && dados.imageExt) {
+    const ext = dados.imageExt.replace(/^\./, '').toLowerCase();
+    const oldFilename = filenameFromImagemPath(current.data.imagem);
+    const newFilename = `${slug}.${ext}`;
+    const existing = await getFile(`${DEPT_ASSETS_DIR}/${newFilename}`);
+
+    await putFile(
+      `${DEPT_ASSETS_DIR}/${newFilename}`,
+      dados.imageBuffer,
+      `cms: atualizar imagem do departamento ${slug}`,
+      existing?.sha,
+    );
+
+    if (oldFilename && oldFilename !== newFilename) {
+      const oldFile = await getFile(`${DEPT_ASSETS_DIR}/${oldFilename}`);
+      if (oldFile) {
+        await deleteFile(
+          `${DEPT_ASSETS_DIR}/${oldFilename}`,
+          oldFile.sha,
+          `cms: remover imagem antiga ${oldFilename}`,
+        );
+      }
+    }
+
+    imagem = `/images/departamentos/${newFilename}`;
+  }
+
+  const json: DepartamentoJson = {
+    nome: dados.nome,
+    sigla: dados.sigla,
+    descricaoCurta: dados.descricaoCurta,
+    descricaoCompleta: dados.descricaoCompleta,
+    lideranca: dados.lideranca,
+    imagem,
+    ordem: dados.ordem,
+  };
+
+  await putFile(
+    `${DEPT_CONTENT_DIR}/${slug}.json`,
+    Buffer.from(`${JSON.stringify(json, null, 2)}\n`, 'utf8'),
+    `cms: atualizar departamento ${slug}`,
+    current.sha,
+  );
+
+  return jsonToDepartamento(slug, json);
+}
+
+export async function githubDeleteDepartamento(slug: string): Promise<void> {
+  const current = await readDepartamentoJson(slug);
+  if (!current) throw new Error('Departamento não encontrado');
+
+  await deleteFile(
+    `${DEPT_CONTENT_DIR}/${slug}.json`,
+    current.sha,
+    `cms: remover departamento ${slug}`,
+  );
+
+  const filename = filenameFromImagemPath(current.data.imagem);
+  if (filename) {
+    const image = await getFile(`${DEPT_ASSETS_DIR}/${filename}`);
+    if (image) {
+      await deleteFile(`${DEPT_ASSETS_DIR}/${filename}`, image.sha, `cms: remover imagem ${filename}`);
+    }
+  }
+}
+
+export async function githubReadDepartamentoImage(
+  slug: string,
+): Promise<{ buffer: Buffer; ext: string; contentType: string } | null> {
+  try {
+    const current = await readDepartamentoJson(slug);
+    if (!current) return null;
+    const filename = filenameFromImagemPath(current.data.imagem);
+    if (!filename) return null;
+    const file = await getFile(`${DEPT_ASSETS_DIR}/${filename}`);
+    if (!file) return null;
+    const ext = filename.split('.').pop()?.toLowerCase() || 'jpg';
+    return { buffer: file.buffer, ext, contentType: contentTypeForExt(ext === 'jpeg' ? 'jpg' : ext) };
   } catch {
     return null;
   }

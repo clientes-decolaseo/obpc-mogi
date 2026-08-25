@@ -2,21 +2,18 @@
 import { getCollection } from 'astro:content';
 import type { ImageMetadata } from 'astro';
 import DepartamentoCard from './DepartamentoCard.astro';
-import umasbrac from '../assets/departamentos/umasbrac.png';
-import ufebrac from '../assets/departamentos/ufebrac.png';
-import menibrac from '../assets/departamentos/menibrac.png';
-import adobrac from '../assets/departamentos/adobrac.png';
-import jubrac from '../assets/departamentos/jubrac.png';
-import acaoSocial from '../assets/departamentos/acao-social.png';
 
-const imageMap: Record<string, ImageMetadata> = {
-  '/images/departamentos/umasbrac.png': umasbrac,
-  '/images/departamentos/ufebrac.png': ufebrac,
-  '/images/departamentos/menibrac.png': menibrac,
-  '/images/departamentos/adobrac.png': adobrac,
-  '/images/departamentos/jubrac.png': jubrac,
-  '/images/departamentos/acao-social.png': acaoSocial,
-};
+const imageModules = import.meta.glob<{ default: ImageMetadata }>(
+  '../assets/departamentos/*.{png,jpg,jpeg,webp}',
+  { eager: true },
+);
+
+const imageMap: Record<string, ImageMetadata> = {};
+for (const [filePath, mod] of Object.entries(imageModules)) {
+  const filename = filePath.split('/').pop();
+  if (!filename) continue;
+  imageMap[`/images/departamentos/${filename}`] = mod.default;
+}
 
 const departamentos = (await getCollection('departamentos')).sort(
   (a, b) => a.data.ordem - b.data.ordem,
