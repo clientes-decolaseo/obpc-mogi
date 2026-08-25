@@ -57,7 +57,7 @@ const session = getSession(Astro.cookies);
                 <input type="date" name="dataPublicacao" required class="admin-input" />
               </label>
               <label class="admin-label">
-                Imagem (jpg, png ou webp — máx. 5MB)
+                Imagem (jpg, png ou webp — máx. 4MB)
                 <input
                   type="file"
                   name="imagem"
@@ -248,7 +248,12 @@ const session = getSession(Astro.cookies);
             body: formData,
           });
           const payload = await res.json().catch(function () {
-            return { error: 'Erro inesperado' };
+            return {
+              error:
+                res.status === 413
+                  ? 'Imagem grande demais para o servidor (máx. 4MB).'
+                  : 'Erro inesperado',
+            };
           });
 
           if (!res.ok) {
@@ -263,7 +268,7 @@ const session = getSession(Astro.cookies);
           if (feedback) {
             feedback.hidden = false;
             feedback.classList.add('is-ok');
-            feedback.textContent = 'Publicado com sucesso.';
+            feedback.textContent = 'Publicado. O site atualiza em 1–2 minutos (novo deploy).';
           }
           form.reset();
           loadList();

@@ -5,7 +5,7 @@ import { createComunicado } from '../../../../lib/cms-storage';
 export const prerender = false;
 
 const ALLOWED_EXT = new Set(['jpg', 'jpeg', 'png', 'webp']);
-const MAX_BYTES = 5 * 1024 * 1024;
+const MAX_BYTES = 4 * 1024 * 1024;
 
 export const POST: APIRoute = async ({ request, cookies }) => {
   try {
@@ -44,7 +44,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
   }
 
   if (file.size > MAX_BYTES) {
-    return new Response(JSON.stringify({ error: 'Imagem deve ter no máximo 5MB' }), {
+    return new Response(JSON.stringify({ error: 'Imagem deve ter no máximo 4MB' }), {
       status: 400,
       headers: { 'Content-Type': 'application/json' },
     });
@@ -70,15 +70,24 @@ export const POST: APIRoute = async ({ request, cookies }) => {
   }
 
   const imageBuffer = Buffer.from(await file.arrayBuffer());
-  const created = await createComunicado({
-    titulo,
-    dataPublicacao,
-    imageBuffer,
-    imageExt,
-  });
 
-  return new Response(JSON.stringify({ ok: true, item: created }), {
-    status: 201,
-    headers: { 'Content-Type': 'application/json' },
-  });
+  try {
+    const created = await createComunicado({
+      titulo,
+      dataPublicacao,
+      imageBuffer,
+      imageExt,
+    });
+
+    return new Response(JSON.stringify({ ok: true, item: created }), {
+      status: 201,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Erro ao publicar';
+    return new Response(JSON.stringify({ error: message }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
 };

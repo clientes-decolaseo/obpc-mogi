@@ -1,10 +1,15 @@
-// TODO: quando formos pra produção, trocar as implementações de write por chamadas à
-// GitHub Contents API — a assinatura das funções deve continuar igual para não quebrar
-// as rotas de API que as usam.
-
 import { readdir, readFile, writeFile, mkdir, unlink } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { readEnv } from './env';
+import {
+  isGitHubCmsEnabled,
+  githubListComunicados,
+  githubCreateComunicado,
+  githubUpdateComunicado,
+  githubDeleteComunicado,
+  githubReadComunicadoImage,
+} from './cms-github';
 
 const rootDir = fileURLToPath(new URL('../..', import.meta.url));
 const contentDir = path.join(rootDir, 'src', 'content', 'comunicados');
@@ -72,7 +77,17 @@ async function readComunicadoJson(slug: string): Promise<ComunicadoJson> {
   return JSON.parse(raw) as ComunicadoJson;
 }
 
+function assertWritable(): void {
+  if (readEnv('VERCEL') === '1' && !isGitHubCmsEnabled()) {
+    throw new Error(
+      'O servidor da Vercel não permite gravar arquivos. Configure GITHUB_TOKEN (Contents: Read and write) nas Environment Variables e faça Redeploy.',
+    );
+  }
+}
+
 export async function listComunicados(): Promise<ComunicadoListItem[]> {
+  if (isGitHubCmsEnabled()) return githubListComunicados();
+
   await mkdir(contentDir, { recursive: true });
   const files = (await readdir(contentDir)).filter((f) => f.endsWith('.json'));
 
@@ -100,6 +115,11 @@ export async function createComunicado({
   imageBuffer,
   imageExt,
 }: CreateComunicadoInput): Promise<ComunicadoListItem> {
+  if (isGitHubCmsEnabled()) {
+    return githubCreateComunicado({ titulo, dataPublicacao, imageBuffer, imageExt });
+  }
+  assertWritable();
+
   await mkdir(contentDir, { recursive: true });
   await mkdir(assetsDir, { recursive: true });
 
@@ -130,6 +150,9 @@ export async function updateComunicado(
   slug: string,
   dados: UpdateComunicadoInput,
 ): Promise<ComunicadoListItem> {
+  if (isGitHubCmsEnabled()) return githubUpdateComunicado(slug, dados);
+  assertWritable();
+
   await mkdir(contentDir, { recursive: true });
   await mkdir(assetsDir, { recursive: true });
 
@@ -179,6 +202,9 @@ export async function updateComunicado(
 }
 
 export async function deleteComunicado(slug: string): Promise<void> {
+  if (isGitHubCmsEnabled()) return githubDeleteComunicado(slug);
+  assertWritable();
+
   const jsonPath = path.join(contentDir, `${slug}.json`);
   let current: ComunicadoJson;
   try {
@@ -203,6 +229,8 @@ export async function deleteComunicado(slug: string): Promise<void> {
 export async function readComunicadoImage(
   slug: string,
 ): Promise<{ buffer: Buffer; ext: string; contentType: string } | null> {
+  if (isGitHubCmsEnabled()) return githubReadComunicadoImage(slug);
+
   try {
     const current = await readComunicadoJson(slug);
     const filename = filenameFromImagemPath(current.imagem);

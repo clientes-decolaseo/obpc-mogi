@@ -5,7 +5,7 @@ import { updateComunicado } from '../../../../lib/cms-storage';
 export const prerender = false;
 
 const ALLOWED_EXT = new Set(['jpg', 'jpeg', 'png', 'webp']);
-const MAX_BYTES = 5 * 1024 * 1024;
+const MAX_BYTES = 4 * 1024 * 1024;
 
 function resolveExt(file: File): string {
   const nameExt = file.name.split('.').pop()?.toLowerCase() ?? '';
@@ -44,7 +44,7 @@ export const PUT: APIRoute = async ({ request, cookies }) => {
 
       if (file instanceof File && file.size > 0) {
         if (file.size > MAX_BYTES) {
-          return new Response(JSON.stringify({ error: 'Imagem deve ter no máximo 5MB' }), {
+          return new Response(JSON.stringify({ error: 'Imagem deve ter no máximo 4MB' }), {
             status: 400,
             headers: { 'Content-Type': 'application/json' },
           });

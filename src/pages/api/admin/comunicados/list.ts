@@ -12,9 +12,17 @@ export const GET: APIRoute = async ({ cookies }) => {
     throw err;
   }
 
-  const items = await listComunicados();
-  return new Response(JSON.stringify({ items }), {
-    status: 200,
-    headers: { 'Content-Type': 'application/json' },
-  });
+  try {
+    const items = await listComunicados();
+    return new Response(JSON.stringify({ items }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Erro ao listar comunicados';
+    return new Response(JSON.stringify({ error: message }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
 };
