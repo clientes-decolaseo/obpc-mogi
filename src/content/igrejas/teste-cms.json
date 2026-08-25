@@ -1,0 +1,8 @@
+{
+  "nome": "Igreja OBPC Teste CMS",
+  "dirigente": "Pastor Teste",
+  "endereco": "Rua de Teste, 1",
+  "mapaUrl": "https://www.google.com.br/maps",
+  "imagem": "/images/igrejas/teste-cms.png",
+  "slug": "teste-cms"
+}
